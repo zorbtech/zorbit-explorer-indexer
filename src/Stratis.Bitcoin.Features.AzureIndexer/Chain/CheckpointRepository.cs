@@ -27,22 +27,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             return Checkpoint.LoadBlobAsync(blob, _network);
         }
 
-        private string GetSetPart(string checkpointName)
-        {
-            var isLocal = !checkpointName.Contains('/');
-            if (isLocal)
-                return GetSetPart() + checkpointName;
-            if (checkpointName.StartsWith("/"))
-                checkpointName = checkpointName.Substring(1);
-            return checkpointName;
-        }
-
-        private string GetSetPart()
-        {
-            if (CheckpointSet == null)
-                return "";
-            return CheckpointSet + "/";
-        }
 
         public async Task<Checkpoint[]> GetCheckpointsAsync()
         {
@@ -52,7 +36,21 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             {
                 checkpoints.Add(Checkpoint.LoadBlobAsync(blob, _network));
             }
+
             return await Task.WhenAll(checkpoints.ToArray());
+        }
+
+        public Checkpoint GetCheckpoint(string checkpointName)
+        {
+            try
+            {
+                return GetCheckpointAsync(checkpointName).Result;
+            }
+            catch (AggregateException aex)
+            {
+                ExceptionDispatchInfo.Capture(aex.InnerException).Throw();
+                return null;
+            }
         }
 
         public async Task DeleteCheckpointsAsync()
@@ -73,17 +71,21 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             }
         }
 
-        public Checkpoint GetCheckpoint(string checkpointName)
+        private string GetSetPart(string checkpointName)
         {
-            try
-            {
-                return GetCheckpointAsync(checkpointName).Result;
-            }
-            catch (AggregateException aex)
-            {
-                ExceptionDispatchInfo.Capture(aex.InnerException).Throw();
-                return null;
-            }
+            var isLocal = !checkpointName.Contains('/');
+            if (isLocal)
+                return GetSetPart() + checkpointName;
+            if (checkpointName.StartsWith("/"))
+                checkpointName = checkpointName.Substring(1);
+            return checkpointName;
+        }
+
+        private string GetSetPart()
+        {
+            if (CheckpointSet == null)
+                return "";
+            return CheckpointSet + "/";
         }
 
         public string CheckpointSet { get; set; }
@@ -91,7 +93,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 
     public static class CloudBlobContainerExtensions
     {
-        public static async Task<IList<IListBlobItem>> ListBlobsAsync(this CloudBlobContainer blobContainer, string prefix, bool useFlatBlobListing, BlobListingDetails blobListingDetails, CancellationToken ct = default(CancellationToken), Action<IList<IListBlobItem>> onProgress = null)
+        public static async Task<IList<IListBlobItem>> ListBlobsAsync(this CloudBlobContainer blobContainer, string prefix, 
+            bool useFlatBlobListing, BlobListingDetails blobListingDetails, CancellationToken ct = default(CancellationToken), 
+            Action<IList<IListBlobItem>> onProgress = null)
         {
             var items = new List<IListBlobItem>();
             BlobContinuationToken token = null;

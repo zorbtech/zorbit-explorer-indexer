@@ -6,6 +6,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 {
     public class ScriptRule : WalletRule
     {
+        public ScriptRule()
+        {
+        }
+
         public ScriptRule(Script destination, Script redeemScript = null)
         {
             this.ScriptPubKey = destination;
@@ -17,30 +21,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
         }
 
-        public ScriptRule()
-        {
-        }
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public Script ScriptPubKey { get; set; }
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public Script ScriptPubKey
-        {
-            get;
-            set;
-        }
+        public Script RedeemScript { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public Script RedeemScript
-        {
-            get;
-            set;
-        }
-
-        public override string Id
-        {
-            get
-            {
-                return this.ScriptPubKey.Hash.ToString();
-            }
-        }
+        public override string Id => this.ScriptPubKey.Hash.ToString();
     }
 }

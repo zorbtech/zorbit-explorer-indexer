@@ -10,23 +10,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
     }
     public class MatchedRule
     {
-        public uint Index
-        {
-            get;
-            set;
-        }
+        public uint Index{get;set;}
 
-        public WalletRule Rule
-        {
-            get;
-            set;
-        }
+        public WalletRule Rule{get;set;}
 
-        public MatchLocation MatchType
-        {
-            get;
-            set;
-        }
+        public MatchLocation MatchType{get;set;}
 
         public override string ToString()
         {

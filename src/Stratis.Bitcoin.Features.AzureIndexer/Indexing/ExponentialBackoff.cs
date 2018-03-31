@@ -25,13 +25,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 
         public async Task Do(Action act, TaskScheduler scheduler = null)
         {
-            Exception lastException = null;
             var retryCount = -1;
-
-            TimeSpan wait;
 
             while (true)
             {
+                Exception lastException = null;
                 try
                 {
                     var task = new Task(act);
@@ -47,8 +45,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
                 {
                     lastException = ex;
                 }
+
                 retryCount++;
-                if (!GetShouldRetry(retryCount, lastException, out wait))
+
+                if (!GetShouldRetry(retryCount, lastException, out var wait))
                 {
                     ExceptionDispatchInfo.Capture(lastException).Throw();
                 }

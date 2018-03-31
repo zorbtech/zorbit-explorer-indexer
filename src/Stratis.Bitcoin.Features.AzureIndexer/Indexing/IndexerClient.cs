@@ -17,25 +17,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 {
     public class IndexerClient
     {
-        private readonly IndexerConfiguration _configuration;
-
-        public IndexerConfiguration Configuration
-        {
-            get { return _configuration; }
-        }
-
         public IndexerClient(IndexerConfiguration configuration)
         {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException("configuration");
-            }
-
-            _configuration = configuration;
+            Configuration = configuration ?? throw new ArgumentNullException("configuration");
             BalancePartitionSize = 50;
         }
-
-        public int BalancePartitionSize { get; set; }
 
         public Block GetBlock(uint256 blockId)
         {
@@ -92,7 +78,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         public async Task<TransactionEntry> GetTransactionAsync(bool loadPreviousOutput, bool fetchColor, uint256 txId)
         {
             if (txId == null)
+            {
                 return null;
+            }
+
             TransactionEntry result = null;
 
             var table = Configuration.GetTransactionTable();
@@ -103,81 +92,90 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
                                         TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, searchedEntity.PartitionKey),
                                         TableOperators.And,
                                         TableQuery.CombineFilters(
-                                            TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThan, txId.ToString() + "-"),
+                                            TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThan, txId + "-"),
                                             TableOperators.And,
-                                            TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThan, txId.ToString() + "|")
+                                            TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThan, txId + "|")
                                         )
                                   ));
             query.TakeCount = 10; //Should not have more
+
             var entities = new List<TransactionEntry.Entity>();
             foreach (var e in await table.ExecuteQuerySegmentedAsync(query, null).ConfigureAwait(false))
             {
-                if (e.IsFat())
-                    entities.Add(new TransactionEntry.Entity(await FetchFatEntity(e).ConfigureAwait(false)));
-                else
-                    entities.Add(new TransactionEntry.Entity(e));
+                entities.Add(e.IsFat()
+                    ? new TransactionEntry.Entity(await FetchFatEntity(e).ConfigureAwait(false))
+                    : new TransactionEntry.Entity(e));
             }
+
             if (entities.Count == 0)
-                result = null;
-            else
             {
-                result = new TransactionEntry(entities.ToArray());
-                if (result.Transaction == null)
-                {
-                    foreach (var block in result.BlockIds.Select(id => GetBlock(id)).Where(b => b != null))
-                    {
-                        result.Transaction = block.Transactions.FirstOrDefault(t => t.GetHash() == txId);
-                        entities[0].Transaction = result.Transaction;
-                        if (entities[0].Transaction != null)
-                        {
-                            await UpdateEntity(table, entities[0].CreateTableEntity()).ConfigureAwait(false);
-                        }
-                        break;
-                    }
-                }
+                return null;
+            }
 
-                if (fetchColor && result.ColoredTransaction == null)
+            result = new TransactionEntry(entities.ToArray());
+
+            if (result.Transaction == null)
+            {
+                foreach (var block in result.BlockIds.Select(GetBlock).Where(b => b != null))
                 {
-                    result.ColoredTransaction = await ColoredTransaction.FetchColorsAsync(txId, result.Transaction, new CachedColoredTransactionRepository(new IndexerColoredTransactionRepository(Configuration))).ConfigureAwait(false);
-                    entities[0].ColoredTransaction = result.ColoredTransaction;
-                    if (entities[0].ColoredTransaction != null)
+                    result.Transaction = block.Transactions.FirstOrDefault(t => t.GetHash() == txId);
+                    entities[0].Transaction = result.Transaction;
+                    if (entities[0].Transaction != null)
                     {
                         await UpdateEntity(table, entities[0].CreateTableEntity()).ConfigureAwait(false);
                     }
-                }
-                var needTxOut = result.SpentCoins == null && loadPreviousOutput && result.Transaction != null;
-                if (needTxOut)
-                {
-                    var inputs = result.Transaction.Inputs.Select(o => o.PrevOut).ToArray();
-                    var parents = await
-                            GetTransactionsAsync(false, false, inputs
-                             .Select(i => i.Hash)
-                             .ToArray()).ConfigureAwait(false);
-
-                    for (var i = 0; i < parents.Length; i++)
-                    {
-                        if (parents[i] == null)
-                        {
-                            IndexerTrace.MissingTransactionFromDatabase(result.Transaction.Inputs[i].PrevOut.Hash);
-                            return null;
-                        }
-                    }
-
-                    var outputs = parents.Select((p, i) => p.Transaction.Outputs[inputs[i].N]).ToArray();
-
-                    result.SpentCoins = Enumerable
-                                            .Range(0, inputs.Length)
-                                            .Select(i => new Spendable(inputs[i], outputs[i]))
-                                            .ToList();
-                    entities[0].PreviousTxOuts.Clear();
-                    entities[0].PreviousTxOuts.AddRange(outputs);
-                    if (entities[0].IsLoaded)
-                    {
-                        await UpdateEntity(table, entities[0].CreateTableEntity()).ConfigureAwait(false);
-                    }
+                    break;
                 }
             }
-            return result != null && result.Transaction != null ? result : null;
+
+            if (fetchColor && result.ColoredTransaction == null)
+            {
+                result.ColoredTransaction = await ColoredTransaction.FetchColorsAsync(txId, result.Transaction, new CachedColoredTransactionRepository(new IndexerColoredTransactionRepository(Configuration))).ConfigureAwait(false);
+                entities[0].ColoredTransaction = result.ColoredTransaction;
+                if (entities[0].ColoredTransaction != null)
+                {
+                    await UpdateEntity(table, entities[0].CreateTableEntity()).ConfigureAwait(false);
+                }
+            }
+
+            var needTxOut = result.SpentCoins == null && loadPreviousOutput && result.Transaction != null;
+            if (!needTxOut)
+            {
+                return result?.Transaction != null ? result : null;
+            }
+
+            var inputs = result.Transaction.Inputs.Select(o => o.PrevOut).ToArray();
+            var parents = await
+                GetTransactionsAsync(false, false, inputs
+                    .Select(i => i.Hash)
+                    .ToArray()).ConfigureAwait(false);
+
+            for (var i = 0; i < parents.Length; i++)
+            {
+                if (parents[i] != null)
+                {
+                    continue;
+                }
+
+                IndexerTrace.MissingTransactionFromDatabase(result.Transaction.Inputs[i].PrevOut.Hash);
+                return null;
+            }
+
+            var outputs = parents.Select((p, i) => p.Transaction.Outputs[inputs[i].N]).ToArray();
+
+            result.SpentCoins = Enumerable
+                .Range(0, inputs.Length)
+                .Select(i => new Spendable(inputs[i], outputs[i]))
+                .ToList();
+            entities[0].PreviousTxOuts.Clear();
+            entities[0].PreviousTxOuts.AddRange(outputs);
+
+            if (entities[0].IsLoaded)
+            {
+                await UpdateEntity(table, entities[0].CreateTableEntity()).ConfigureAwait(false);
+            }
+
+            return result.Transaction != null ? result : null;
         }
 
         private async Task UpdateEntity(CloudTable table, DynamicTableEntity entity)
@@ -314,7 +312,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             };
         }
 
-        private Dictionary<string, Func<WalletRule>> _rules = new Dictionary<string, Func<WalletRule>>();
         public WalletRuleEntry[] GetWalletRules(string walletId)
         {
             var table = Configuration.GetWalletRulesTable();
@@ -345,11 +342,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
                 .Select(e => new WalletRuleEntry(e, this)));
         }
 
-        public bool ColoredBalance
-        {
-            get;
-            set;
-        }
+
 
         public IEnumerable<OrderedBalanceChange> GetOrderedBalance(string walletId,
                                                                    BalanceQuery query = null,
@@ -378,10 +371,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         {
             return GetOrderedBalanceCoreAsync(new BalanceId(walletId), query, cancel);
         }
+
         public IEnumerable<OrderedBalanceChange> GetOrderedBalance(IDestination destination, BalanceQuery query = null, CancellationToken cancel = default(CancellationToken))
         {
             return GetOrderedBalance(destination.ScriptPubKey, query, cancel);
         }
+
         public IEnumerable<Task<List<OrderedBalanceChange>>> GetOrderedBalanceAsync(IDestination destination, BalanceQuery query = null, CancellationToken cancel = default(CancellationToken))
         {
             return GetOrderedBalanceAsync(destination.ScriptPubKey, query, cancel);
@@ -391,6 +386,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         {
             return GetOrderedBalanceCore(new BalanceId(scriptPubKey), query, cancel);
         }
+
         public IEnumerable<Task<List<OrderedBalanceChange>>> GetOrderedBalanceAsync(Script scriptPubKey, BalanceQuery query = null, CancellationToken cancel = default(CancellationToken))
         {
             return GetOrderedBalanceCoreAsync(new BalanceId(scriptPubKey), query, cancel);
@@ -405,6 +401,204 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
                     yield return change;
                 }
             }
+        }
+
+        public void CleanUnconfirmedChanges(IDestination destination, TimeSpan olderThan)
+        {
+            CleanUnconfirmedChanges(destination.ScriptPubKey, olderThan);
+        }
+
+        public void CleanUnconfirmedChanges(Script scriptPubKey, TimeSpan olderThan)
+        {
+            var table = Configuration.GetBalanceTable();
+            var unconfirmed = new List<DynamicTableEntity>();
+
+            foreach (var c in table.ExecuteQuery(new BalanceQuery().CreateTableQuery(new BalanceId(scriptPubKey))))
+            {
+                var change = new OrderedBalanceChange(c);
+                if (change.BlockId != null)
+                    break;
+                if (DateTime.UtcNow - change.SeenUtc < olderThan)
+                    continue;
+                unconfirmed.Add(c);
+            }
+
+            Parallel.ForEach(unconfirmed, c =>
+            {
+                var t = Configuration.GetBalanceTable();
+                c.ETag = "*";
+                t.ExecuteAsync(TableOperation.Delete(c)).GetAwaiter().GetResult();
+            });
+        }
+
+        public bool NeedLoading(OrderedBalanceChange change)
+        {
+            if (change.SpentCoins == null)
+            {
+                return true;
+            }
+
+            return change.ColoredTransaction == null && ColoredBalance;
+        }
+
+        public async Task<bool> EnsurePreviousLoadedAsync(OrderedBalanceChange change)
+        {
+            if (!NeedLoading(change))
+                return true;
+            var parentIds = change.SpentOutpoints.Select(s => s.Hash).ToArray();
+            var parents =
+                await GetTransactionsAsync(false, ColoredBalance, parentIds).ConfigureAwait(false);
+
+            var cache = new NoSqlTransactionRepository();
+            foreach (var parent in parents.Where(p => p != null))
+                cache.Put(parent.TransactionId, parent.Transaction);
+
+            if (change.SpentCoins == null)
+            {
+                var success = await change.EnsureSpentCoinsLoadedAsync(cache).ConfigureAwait(false);
+                if (!success)
+                    return false;
+            }
+            if (ColoredBalance && change.ColoredTransaction == null)
+            {
+                var indexerRepo = new IndexerColoredTransactionRepository(Configuration);
+                indexerRepo.Transactions = new CompositeTransactionRepository(new[] { new ReadOnlyTransactionRepository(cache), indexerRepo.Transactions });
+                var success = await change.EnsureColoredTransactionLoadedAsync(indexerRepo).ConfigureAwait(false);
+                if (!success)
+                    return false;
+            }
+            var entity = change.ToEntity();
+            if (!change.IsEmpty)
+            {
+                await Configuration.GetBalanceTable().ExecuteAsync(TableOperation.Merge(entity)).ConfigureAwait(false);
+            }
+            else
+            {
+                try
+                {
+                    await Configuration.GetTransactionTable().ExecuteAsync(TableOperation.Delete(entity)).ConfigureAwait(false);
+                }
+                catch (StorageException ex)
+                {
+                    if (ex.RequestInformation == null || ex.RequestInformation.HttpStatusCode != 404)
+                        throw;
+                }
+            }
+            return true;
+        }
+
+        public void PruneBalances(IEnumerable<OrderedBalanceChange> balances)
+        {
+            Parallel.ForEach(balances, b =>
+            {
+                var table = Configuration.GetBalanceTable();
+                table.ExecuteAsync(TableOperation.Delete(b.ToEntity())).GetAwaiter().GetResult();
+            });
+        }
+
+        public ConcurrentChain GetMainChain()
+        {
+            var chain = new ConcurrentChain();
+            SynchronizeChain(chain);
+            return chain;
+        }
+
+        public void SynchronizeChain(ChainBase chain)
+        {
+            if (chain.Tip != null && chain.Genesis.HashBlock != Configuration.Network.GetGenesis().GetHash())
+                throw new ArgumentException("Incompatible Network between the indexer and the chain", "chain");
+            if (chain.Tip == null)
+            {
+                var genesis = Configuration.Network.GetGenesis();
+                chain.SetTip(new ChainedBlock(genesis.Header, genesis.GetHash(), 0));
+            }
+            GetChainChangesUntilFork(chain.Tip, false)
+                .UpdateChain(chain);
+        }
+
+        public bool MergeIntoWallet(string walletId,
+                                    IDestination destination,
+                                    WalletRule rule = null,
+                                    CancellationToken cancel = default(CancellationToken))
+        {
+            return MergeIntoWallet(walletId, destination.ScriptPubKey, rule, cancel);
+        }
+
+        public bool MergeIntoWallet(string walletId, Script scriptPubKey, WalletRule rule = null, CancellationToken cancel = default(CancellationToken))
+        {
+            return MergeIntoWalletCore(walletId, new BalanceId(scriptPubKey), rule, cancel);
+        }
+
+        public bool MergeIntoWallet(string walletId, string walletSource,
+            WalletRule rule = null,
+            CancellationToken cancel = default(CancellationToken))
+        {
+            return MergeIntoWalletCore(walletId, new BalanceId(walletSource), rule, cancel);
+        }
+
+        private bool MergeIntoWalletCore(string walletId, BalanceId balanceId, WalletRule rule, CancellationToken cancel)
+        {
+            var indexer = Configuration.CreateIndexer();
+
+            var query = new BalanceQuery()
+            {
+                From = new UnconfirmedBalanceLocator().Floor(),
+                RawOrdering = true
+            };
+
+            var sourcesByKey = GetOrderedBalanceCore(balanceId, query, cancel)
+                .ToDictionary(GetKey);
+
+            if (sourcesByKey.Count == 0)
+            {
+                return false;
+            }
+
+            var destByKey =
+                GetOrderedBalance(walletId, query, cancel)
+                .ToDictionary(GetKey);
+
+            var entities = new List<OrderedBalanceChange>();
+            foreach (var kv in sourcesByKey)
+            {
+                var source = kv.Value;
+                var existing = destByKey.TryGet(kv.Key) ?? new OrderedBalanceChange(walletId, source);
+                existing.Merge(kv.Value, rule);
+                entities.Add(existing);
+                if (entities.Count == 100)
+                {
+                    indexer.Index(entities);
+                }
+            }
+
+            if (entities.Count != 0)
+            {
+                indexer.Index(entities);
+            }
+            return true;
+        }
+
+        private static string GetKey(OrderedBalanceChange change)
+        {
+            return $"{change.Height}-{(change.BlockId == null ? new uint256(0) : change.BlockId)}-{change.TransactionId}-{change.SeenUtc.Ticks}";
+        }
+
+        private static IEnumerable<DynamicTableEntity> ExecuteBalanceQuery(CloudTable table, TableQuery tableQuery, IEnumerable<int> pages)
+        {
+            pages = pages ?? new int[0];
+            var pagesEnumerator = pages.GetEnumerator();
+            TableContinuationToken continuation = null;
+            do
+            {
+                tableQuery.TakeCount = pagesEnumerator.MoveNext() ? (int?)pagesEnumerator.Current : null;
+
+                var segment = table.ExecuteQuerySegmentedAsync(tableQuery, continuation).GetAwaiter().GetResult();
+                continuation = segment.ContinuationToken;
+                foreach (var entity in segment)
+                {
+                    yield return entity;
+                }
+            } while (continuation != null);
         }
 
         private class LoadingTransactionTask
@@ -527,24 +721,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
                 yield return WaitAndReturn(null, result);
         }
 
-        private IEnumerable<DynamicTableEntity> ExecuteBalanceQuery(CloudTable table, TableQuery tableQuery, IEnumerable<int> pages)
-        {
-            pages = pages ?? new int[0];
-            var pagesEnumerator = pages.GetEnumerator();
-            TableContinuationToken continuation = null;
-            do
-            {
-                tableQuery.TakeCount = pagesEnumerator.MoveNext() ? (int?)pagesEnumerator.Current : null;
-
-                var segment = table.ExecuteQuerySegmentedAsync(tableQuery, continuation).GetAwaiter().GetResult();
-                continuation = segment.ContinuationToken;
-                foreach (var entity in segment)
-                {
-                    yield return entity;
-                }
-            } while (continuation != null);
-        }
-
         private async Task<List<OrderedBalanceChange>> WaitAndReturn(Task<bool[]> partitionLoading, List<OrderedBalanceChange> result)
         {
             if (partitionLoading != null)
@@ -563,183 +739,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             return result;
         }
 
-        public void CleanUnconfirmedChanges(IDestination destination, TimeSpan olderThan)
-        {
-            CleanUnconfirmedChanges(destination.ScriptPubKey, olderThan);
-        }
+        public int BalancePartitionSize { get; set; }
 
+        public IndexerConfiguration Configuration { get; }
 
-
-        public void CleanUnconfirmedChanges(Script scriptPubKey, TimeSpan olderThan)
-        {
-            var table = Configuration.GetBalanceTable();
-            var unconfirmed = new List<DynamicTableEntity>();
-
-            foreach (var c in table.ExecuteQuery(new BalanceQuery().CreateTableQuery(new BalanceId(scriptPubKey))))
-            {
-                var change = new OrderedBalanceChange(c);
-                if (change.BlockId != null)
-                    break;
-                if (DateTime.UtcNow - change.SeenUtc < olderThan)
-                    continue;
-                unconfirmed.Add(c);
-            }
-
-            Parallel.ForEach(unconfirmed, c =>
-            {
-                var t = Configuration.GetBalanceTable();
-                c.ETag = "*";
-                t.ExecuteAsync(TableOperation.Delete(c)).GetAwaiter().GetResult();
-            });
-        }
-
-        public bool NeedLoading(OrderedBalanceChange change)
-        {
-            if (change.SpentCoins != null)
-            {
-                if (change.ColoredTransaction != null || !ColoredBalance)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        public async Task<bool> EnsurePreviousLoadedAsync(OrderedBalanceChange change)
-        {
-            if (!NeedLoading(change))
-                return true;
-            var parentIds = change.SpentOutpoints.Select(s => s.Hash).ToArray();
-            var parents =
-                await GetTransactionsAsync(false, ColoredBalance, parentIds).ConfigureAwait(false);
-
-            var cache = new NoSqlTransactionRepository();
-            foreach (var parent in parents.Where(p => p != null))
-                cache.Put(parent.TransactionId, parent.Transaction);
-
-            if (change.SpentCoins == null)
-            {
-                var success = await change.EnsureSpentCoinsLoadedAsync(cache).ConfigureAwait(false);
-                if (!success)
-                    return false;
-            }
-            if (ColoredBalance && change.ColoredTransaction == null)
-            {
-                var indexerRepo = new IndexerColoredTransactionRepository(Configuration);
-                indexerRepo.Transactions = new CompositeTransactionRepository(new[] { new ReadOnlyTransactionRepository(cache), indexerRepo.Transactions });
-                var success = await change.EnsureColoredTransactionLoadedAsync(indexerRepo).ConfigureAwait(false);
-                if (!success)
-                    return false;
-            }
-            var entity = change.ToEntity();
-            if (!change.IsEmpty)
-            {
-                await Configuration.GetBalanceTable().ExecuteAsync(TableOperation.Merge(entity)).ConfigureAwait(false);
-            }
-            else
-            {
-                try
-                {
-                    await Configuration.GetTransactionTable().ExecuteAsync(TableOperation.Delete(entity)).ConfigureAwait(false);
-                }
-                catch (StorageException ex)
-                {
-                    if (ex.RequestInformation == null || ex.RequestInformation.HttpStatusCode != 404)
-                        throw;
-                }
-            }
-            return true;
-        }
-
-        public void PruneBalances(IEnumerable<OrderedBalanceChange> balances)
-        {
-            Parallel.ForEach(balances, b =>
-            {
-                var table = Configuration.GetBalanceTable();
-                table.ExecuteAsync(TableOperation.Delete(b.ToEntity())).GetAwaiter().GetResult();
-            });
-        }
-
-        public ConcurrentChain GetMainChain()
-        {
-            var chain = new ConcurrentChain();
-            SynchronizeChain(chain);
-            return chain;
-        }
-
-        public void SynchronizeChain(ChainBase chain)
-        {
-            if (chain.Tip != null && chain.Genesis.HashBlock != Configuration.Network.GetGenesis().GetHash())
-                throw new ArgumentException("Incompatible Network between the indexer and the chain", "chain");
-            if (chain.Tip == null)
-            {
-                var genesis = Configuration.Network.GetGenesis();
-                chain.SetTip(new ChainedBlock(genesis.Header, genesis.GetHash(), 0));
-            }
-            GetChainChangesUntilFork(chain.Tip, false)
-                .UpdateChain(chain);
-        }
-
-        public bool MergeIntoWallet(string walletId,
-                                    IDestination destination,
-                                    WalletRule rule = null,
-                                    CancellationToken cancel = default(CancellationToken))
-        {
-            return MergeIntoWallet(walletId, destination.ScriptPubKey, rule, cancel);
-        }
-
-        public bool MergeIntoWallet(string walletId, Script scriptPubKey, WalletRule rule = null, CancellationToken cancel = default(CancellationToken))
-        {
-            return MergeIntoWalletCore(walletId, new BalanceId(scriptPubKey), rule, cancel);
-        }
-
-        public bool MergeIntoWallet(string walletId, string walletSource,
-            WalletRule rule = null,
-            CancellationToken cancel = default(CancellationToken))
-        {
-            return MergeIntoWalletCore(walletId, new BalanceId(walletSource), rule, cancel);
-        }
-
-        private bool MergeIntoWalletCore(string walletId, BalanceId balanceId, WalletRule rule, CancellationToken cancel)
-        {
-            var indexer = Configuration.CreateIndexer();
-
-            var query = new BalanceQuery()
-            {
-                From = new UnconfirmedBalanceLocator().Floor(),
-                RawOrdering = true
-            };
-            var sourcesByKey = GetOrderedBalanceCore(balanceId, query, cancel)
-                .ToDictionary(i => GetKey(i));
-            if (sourcesByKey.Count == 0)
-                return false;
-            var destByKey =
-                GetOrderedBalance(walletId, query, cancel)
-                .ToDictionary(i => GetKey(i));
-
-            var entities = new List<OrderedBalanceChange>();
-            foreach (var kv in sourcesByKey)
-            {
-                var source = kv.Value;
-                var existing = destByKey.TryGet(kv.Key);
-                if (existing == null)
-                {
-                    existing = new OrderedBalanceChange(walletId, source);
-                }
-                existing.Merge(kv.Value, rule);
-                entities.Add(existing);
-                if (entities.Count == 100)
-                    indexer.Index(entities);
-            }
-            if (entities.Count != 0)
-                indexer.Index(entities);
-            return true;
-        }
-
-        private static string GetKey(OrderedBalanceChange change)
-        {
-            return $"{change.Height}-{(change.BlockId == null ? new uint256(0) : change.BlockId)}-{change.TransactionId}-{change.SeenUtc.Ticks}";
-        }
+        public bool ColoredBalance { get; set; }
     }
 
     public static class CloudTableExtensions

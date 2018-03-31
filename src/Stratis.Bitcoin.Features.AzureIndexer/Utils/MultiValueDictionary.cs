@@ -39,6 +39,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return value;
         }
+
         /// <summary>
         /// Throws an exception if the specified parameter's value is IntPtr.Zero.
         /// </summary>
@@ -55,6 +56,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return value;
         }
+
         /// <summary>
         /// Throws an exception if the specified parameter's value is null.
         /// </summary>
@@ -76,6 +78,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return value;
         }
+
         /// <summary>
         /// Throws an <see cref="T:System.ArgumentOutOfRangeException" /> if a condition does not evaluate to true.
         /// </summary>
@@ -84,9 +87,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
             if (!condition)
             {
-                Requires.FailRange(parameterName, message);
+                FailRange(parameterName, message);
             }
         }
+
         /// <summary>
         /// Throws an <see cref="T:System.ArgumentOutOfRangeException" /> if a condition does not evaluate to true.
         /// </summary>
@@ -100,6 +104,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             throw new ArgumentOutOfRangeException(parameterName, message);
         }
+
         /// <summary>
         /// Throws an ArgumentException if a condition does not evaluate to true.
         /// </summary>
@@ -111,6 +116,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 throw new ArgumentException(message, parameterName);
             }
         }
+
         /// <summary>
         /// Throws an ArgumentException if a condition does not evaluate to true.
         /// </summary>
@@ -123,11 +129,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
     }
+
     internal sealed class Sr : Exceptions
     {
         private Sr()
         {
         }
+
         internal static string GetString(string text)
         {
             return text;
@@ -141,7 +149,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
     internal class Exceptions
     {
         private static ResourceManager _resourceMan;
-        private static CultureInfo _resourceCulture;
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -150,103 +158,58 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
             get
             {
-                if (object.ReferenceEquals(Exceptions._resourceMan, null))
+                if (!ReferenceEquals(_resourceMan, null))
                 {
-                    var resourceManager = new ResourceManager("Stratis.Bitcoin.Features.AzureIndexer.Exceptions", typeof(Exceptions).GetTypeInfo().Assembly);
-                    Exceptions._resourceMan = resourceManager;
+                    return _resourceMan;
                 }
-                return Exceptions._resourceMan;
+
+                var resourceManager = new ResourceManager("Stratis.Bitcoin.Features.AzureIndexer.Exceptions", typeof(Exceptions).GetTypeInfo().Assembly);
+                _resourceMan = resourceManager;
+                return _resourceMan;
             }
         }
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [EditorBrowsable(EditorBrowsableState.Advanced)]
-        internal static CultureInfo Culture
-        {
-            get
-            {
-                return Exceptions._resourceCulture;
-            }
-            set
-            {
-                Exceptions._resourceCulture = value;
-            }
-        }
+        internal static CultureInfo Culture { get; set; }
+
         /// <summary>
         ///   Looks up a localized string similar to Destination array is not long enough to copy all the items in the collection. Check array index and length..
         /// </summary>
-        internal static string CopyToArgumentsTooSmall
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("CopyTo_ArgumentsTooSmall", Exceptions._resourceCulture);
-            }
-        }
+        internal static string CopyToArgumentsTooSmall => ResourceManager.GetString("CopyTo_ArgumentsTooSmall", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to The specified TValueCollection creates collections that have IsReadOnly set to true by default. TValueCollection must be a mutable ICollection..
         /// </summary>
-        internal static string CreateTValueCollectionReadOnly
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("Create_TValueCollectionReadOnly", Exceptions._resourceCulture);
-            }
-        }
+        internal static string CreateTValueCollectionReadOnly => ResourceManager.GetString("Create_TValueCollectionReadOnly", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to Enumeration has already completed..
         /// </summary>
-        internal static string EnumeratorAfterCurrent
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("Enumerator_AfterCurrent", Exceptions._resourceCulture);
-            }
-        }
+        internal static string EnumeratorAfterCurrent => ResourceManager.GetString("Enumerator_AfterCurrent", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to Enumeration has not started. Call MoveNext() before Current..
         /// </summary>
-        internal static string EnumeratorBeforeCurrent
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("Enumerator_BeforeCurrent", Exceptions._resourceCulture);
-            }
-        }
+        internal static string EnumeratorBeforeCurrent => ResourceManager.GetString("Enumerator_BeforeCurrent", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to Collection was modified; enumeration operation may not execute.
         /// </summary>
-        internal static string EnumeratorModification
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("Enumerator_Modification", Exceptions._resourceCulture);
-            }
-        }
+        internal static string EnumeratorModification => ResourceManager.GetString("Enumerator_Modification", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to The given key was not present..
         /// </summary>
-        internal static string KeyNotFound
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("KeyNotFound", Exceptions._resourceCulture);
-            }
-        }
+        internal static string KeyNotFound => ResourceManager.GetString("KeyNotFound", Culture);
+
         /// <summary>
         ///   Looks up a localized string similar to The collection is read-only.
         /// </summary>
-        internal static string ReadOnlyModification
-        {
-            get
-            {
-                return Exceptions.ResourceManager.GetString("ReadOnly_Modification", Exceptions._resourceCulture);
-            }
-        }
-        internal Exceptions()
-        {
-        }
+        internal static string ReadOnlyModification => ResourceManager.GetString("ReadOnly_Modification", Culture);
     }
 
     /// <summary>
@@ -280,44 +243,42 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 During,
                 AfterLast
             }
+
             private readonly MultiValueDictionary<TKey, TValue> _multiValueDictionary;
             private readonly int _version;
             private KeyValuePair<TKey, IReadOnlyCollection<TValue>> _current;
-            private Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>.Enumerator _enumerator;
-            private MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState _state;
-            public KeyValuePair<TKey, IReadOnlyCollection<TValue>> Current
-            {
-                get
-                {
-                    return this._current;
-                }
-            }
+            private Dictionary<TKey, InnerCollectionView>.Enumerator _enumerator;
+            private EnumerationState _state;
+            public KeyValuePair<TKey, IReadOnlyCollection<TValue>> Current => _current;
+
             object IEnumerator.Current
             {
                 get
                 {
-                    switch (this._state)
+                    switch (_state)
                     {
-                        case MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.BeforeFirst:
+                        case EnumerationState.BeforeFirst:
                             throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorBeforeCurrent));
-                        case MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.AfterLast:
+                        case EnumerationState.AfterLast:
                             throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorAfterCurrent));
                     }
-                    return this._current;
+                    return _current;
                 }
             }
+
             /// <summary>
             /// Constructor for the enumerator
             /// </summary>
             /// <param name="multiValueDictionary">A MultiValueDictionary to iterate over</param>
             internal Enumerator(MultiValueDictionary<TKey, TValue> multiValueDictionary)
             {
-                this._multiValueDictionary = multiValueDictionary;
-                this._version = multiValueDictionary._version;
-                this._current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
-                this._enumerator = multiValueDictionary._dictionary.GetEnumerator();
-                this._state = MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.BeforeFirst;
+                _multiValueDictionary = multiValueDictionary;
+                _version = multiValueDictionary._version;
+                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                _enumerator = multiValueDictionary._dictionary.GetEnumerator();
+                _state = EnumerationState.BeforeFirst;
             }
+
             /// <summary>
             /// Advances the enumerator to the next element of the collection.
             /// </summary>
@@ -327,46 +288,49 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             /// <exception cref="T:System.InvalidOperationException">The collection was modified after the enumerator was created. </exception>
             public bool MoveNext()
             {
-                if (this._version != this._multiValueDictionary._version)
+                if (_version != _multiValueDictionary._version)
                 {
                     throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorModification));
                 }
-                if (this._enumerator.MoveNext())
+                if (_enumerator.MoveNext())
                 {
-                    var keyValuePair = this._enumerator.Current;
+                    var keyValuePair = _enumerator.Current;
                     var arg570 = keyValuePair.Key;
-                    var keyValuePair2 = this._enumerator.Current;
-                    this._current = new KeyValuePair<TKey, IReadOnlyCollection<TValue>>(arg570, keyValuePair2.Value);
-                    this._state = MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.During;
+                    var keyValuePair2 = _enumerator.Current;
+                    _current = new KeyValuePair<TKey, IReadOnlyCollection<TValue>>(arg570, keyValuePair2.Value);
+                    _state = EnumerationState.During;
                     return true;
                 }
-                this._current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
-                this._state = MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.AfterLast;
+                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                _state = EnumerationState.AfterLast;
                 return false;
             }
+
             /// <summary>
             /// Sets the enumerator to its initial position, which is before the first element in the collection.
             /// </summary>
             /// <exception cref="T:System.InvalidOperationException">The collection was modified after the enumerator was created. </exception>
             public void Reset()
             {
-                if (this._version != this._multiValueDictionary._version)
+                if (_version != _multiValueDictionary._version)
                 {
                     throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorModification));
                 }
-                this._enumerator.Dispose();
-                this._enumerator = this._multiValueDictionary._dictionary.GetEnumerator();
-                this._current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
-                this._state = MultiValueDictionary<TKey, TValue>.Enumerator.EnumerationState.BeforeFirst;
+                _enumerator.Dispose();
+                _enumerator = _multiValueDictionary._dictionary.GetEnumerator();
+                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                _state = EnumerationState.BeforeFirst;
             }
+
             /// <summary>
             /// Frees resources associated with this Enumerator
             /// </summary>
             public void Dispose()
             {
-                this._enumerator.Dispose();
+                _enumerator.Dispose();
             }
         }
+
         /// <summary>
         /// An inner class that functions as a view of an ICollection within a MultiValueDictionary
         /// </summary>
@@ -374,73 +338,68 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
             private readonly TKey _key;
             private readonly ICollection<TValue> _collection;
-            public int Count
-            {
-                get
-                {
-                    return this._collection.Count;
-                }
-            }
-            public bool IsReadOnly
-            {
-                get
-                {
-                    return true;
-                }
-            }
-            public TKey Key
-            {
-                get
-                {
-                    return this._key;
-                }
-            }
+            public int Count => _collection.Count;
+
+            public bool IsReadOnly => true;
+
+            public TKey Key => _key;
+
             public InnerCollectionView(TKey key, ICollection<TValue> collection)
             {
-                this._key = key;
-                this._collection = collection;
+                _key = key;
+                _collection = collection;
             }
+
             public void AddValue(TValue item)
             {
-                this._collection.Add(item);
+                _collection.Add(item);
             }
+
             public bool RemoveValue(TValue item)
             {
-                return this._collection.Remove(item);
+                return _collection.Remove(item);
             }
+
             public bool Contains(TValue item)
             {
-                return this._collection.Contains(item);
+                return _collection.Contains(item);
             }
+
             public void CopyTo(TValue[] array, int arrayIndex)
             {
                 Requires.NotNullAllowStructs<TValue[]>(array, "array");
                 Requires.Range(arrayIndex >= 0, "arrayIndex", null);
                 Requires.Range(arrayIndex <= array.Length, "arrayIndex", null);
-                Requires.Argument(array.Length - arrayIndex >= this._collection.Count, "arrayIndex", Sr.GetString(Exceptions.CopyToArgumentsTooSmall));
-                this._collection.CopyTo(array, arrayIndex);
+                Requires.Argument(array.Length - arrayIndex >= _collection.Count, "arrayIndex", Sr.GetString(Exceptions.CopyToArgumentsTooSmall));
+                _collection.CopyTo(array, arrayIndex);
             }
+
             public IEnumerator<TValue> GetEnumerator()
             {
-                return this._collection.GetEnumerator();
+                return _collection.GetEnumerator();
             }
+
             IEnumerator IEnumerable.GetEnumerator()
             {
-                return this.GetEnumerator();
+                return GetEnumerator();
             }
+
             void ICollection<TValue>.Add(TValue item)
             {
                 throw new NotSupportedException(Sr.GetString(Exceptions.ReadOnlyModification));
             }
+
             void ICollection<TValue>.Clear()
             {
                 throw new NotSupportedException(Sr.GetString(Exceptions.ReadOnlyModification));
             }
+
             bool ICollection<TValue>.Remove(TValue item)
             {
                 throw new NotSupportedException(Sr.GetString(Exceptions.ReadOnlyModification));
             }
         }
+
         /// <summary>
         /// A view of a <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> as a read-only 
         /// <see cref="T:System.Linq.ILookup`2" /> object
@@ -455,81 +414,78 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     During,
                     AfterLast
                 }
+
                 private readonly MultiValueDictionary<TKey, TValue> _multiValueDictionary;
                 private IGrouping<TKey, TValue> _current;
                 private readonly int _version;
-                private readonly IEnumerator<KeyValuePair<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>> _enumerator;
-                private MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState _state;
-                IGrouping<TKey, TValue> IEnumerator<IGrouping<TKey, TValue>>.Current
-                {
-                    get
-                    {
-                        return this._current;
-                    }
-                }
+                private readonly IEnumerator<KeyValuePair<TKey, InnerCollectionView>> _enumerator;
+                private EnumerationState _state;
+                IGrouping<TKey, TValue> IEnumerator<IGrouping<TKey, TValue>>.Current => _current;
+
                 object IEnumerator.Current
                 {
                     get
                     {
-                        switch (this._state)
+                        switch (_state)
                         {
-                            case MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.BeforeFirst:
+                            case EnumerationState.BeforeFirst:
                                 throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorBeforeCurrent));
-                            case MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.AfterLast:
+                            case EnumerationState.AfterLast:
                                 throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorAfterCurrent));
                         }
-                        return this._current;
+                        return _current;
                     }
                 }
+
                 internal Enumerator(MultiValueDictionary<TKey, TValue> multiValueDictionary)
                 {
-                    this._multiValueDictionary = multiValueDictionary;
-                    this._enumerator = multiValueDictionary._dictionary.GetEnumerator();
-                    this._version = multiValueDictionary._version;
-                    var keyValuePair = this._enumerator.Current;
-                    this._current = keyValuePair.Value;
-                    this._state = MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.BeforeFirst;
+                    _multiValueDictionary = multiValueDictionary;
+                    _enumerator = multiValueDictionary._dictionary.GetEnumerator();
+                    _version = multiValueDictionary._version;
+                    var keyValuePair = _enumerator.Current;
+                    _current = keyValuePair.Value;
+                    _state = EnumerationState.BeforeFirst;
                 }
+
                 public bool MoveNext()
                 {
-                    if (this._version != this._multiValueDictionary._version)
+                    if (_version != _multiValueDictionary._version)
                     {
                         throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorModification));
                     }
-                    if (this._enumerator.MoveNext())
+                    if (_enumerator.MoveNext())
                     {
-                        var keyValuePair = this._enumerator.Current;
-                        this._current = keyValuePair.Value;
-                        this._state = MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.During;
+                        var keyValuePair = _enumerator.Current;
+                        _current = keyValuePair.Value;
+                        _state = EnumerationState.During;
                         return true;
                     }
-                    this._state = MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.AfterLast;
+                    _state = EnumerationState.AfterLast;
                     return false;
                 }
+
                 public void Reset()
                 {
-                    if (this._version != this._multiValueDictionary._version)
+                    if (_version != _multiValueDictionary._version)
                     {
                         throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorModification));
                     }
-                    this._state = MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator.EnumerationState.BeforeFirst;
-                    this._enumerator.Reset();
-                    var keyValuePair = this._enumerator.Current;
-                    this._current = keyValuePair.Value;
+                    _state = EnumerationState.BeforeFirst;
+                    _enumerator.Reset();
+                    var keyValuePair = _enumerator.Current;
+                    _current = keyValuePair.Value;
                 }
+
                 public void Dispose()
                 {
-                    this._enumerator.Dispose();
+                    _enumerator.Dispose();
                 }
             }
+
             private readonly MultiValueDictionary<TKey, TValue> _multiValueDictionary;
-            public int Count
-            {
-                get
-                {
-                    return this._multiValueDictionary._dictionary.Count;
-                }
-            }
+
+            public int Count => _multiValueDictionary._dictionary.Count;
+
             /// <summary>
             /// Gets the <see cref="T:System.Collections.Generic.IEnumerable`1" /> sequence of <typeparamref name="TValue" />s
             /// associated with the given <typeparamref name="TKey" />. 
@@ -544,36 +500,41 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             {
                 get
                 {
-                    MultiValueDictionary<TKey, TValue>.InnerCollectionView result;
-                    if (this._multiValueDictionary._dictionary.TryGetValue(key, out result))
+                    InnerCollectionView result;
+                    if (_multiValueDictionary._dictionary.TryGetValue(key, out result))
                     {
                         return result;
                     }
                     return Enumerable.Empty<TValue>();
                 }
             }
+
             internal MultiLookup(MultiValueDictionary<TKey, TValue> multiValueDictionary)
             {
-                this._multiValueDictionary = multiValueDictionary;
+                _multiValueDictionary = multiValueDictionary;
             }
+
             public bool Contains(TKey key)
             {
                 Requires.NotNullAllowStructs<TKey>(key, "key");
-                return this._multiValueDictionary._dictionary.ContainsKey(key);
+                return _multiValueDictionary._dictionary.ContainsKey(key);
             }
+
             public IEnumerator<IGrouping<TKey, TValue>> GetEnumerator()
             {
-                return new MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator(this._multiValueDictionary);
+                return new Enumerator(_multiValueDictionary);
             }
+
             IEnumerator IEnumerable.GetEnumerator()
             {
-                return new MultiValueDictionary<TKey, TValue>.MultiLookup.Enumerator(this._multiValueDictionary);
+                return new Enumerator(_multiValueDictionary);
             }
         }
+
         /// <summary>
         /// The private dictionary that this class effectively wraps around
         /// </summary>
-        private readonly Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView> _dictionary;
+        private readonly Dictionary<TKey, InnerCollectionView> _dictionary;
         /// <summary>
         /// The function to construct a new <see cref="T:System.Collections.Generic.ICollection`1" />
         /// </summary>
@@ -593,13 +554,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> that has one or more associated 
         /// <typeparamref name="TValue" />.
         /// </value>
-        public IEnumerable<TKey> Keys
-        {
-            get
-            {
-                return this._dictionary.Keys;
-            }
-        }
+        public IEnumerable<TKey> Keys => _dictionary.Keys;
+
         /// <summary>
         /// Gets an enumerable of <see cref="T:System.Collections.Generic.IReadOnlyCollection`1" /> from this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />,
         /// where each <see cref="T:System.Collections.Generic.IReadOnlyCollection`1" /> is the collection of every <typeparamref name="TValue" /> associated
@@ -607,13 +563,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// </summary>
         /// <value>An IEnumerable of each <see cref="T:System.Collections.Generic.IReadOnlyCollection`1" /> in this 
         /// <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /></value>
-        public IEnumerable<IReadOnlyCollection<TValue>> Values
-        {
-            get
-            {
-                return this._dictionary.Values;
-            }
-        }
+        public IEnumerable<IReadOnlyCollection<TValue>> Values => _dictionary.Values;
+
         /// <summary>
         /// Get every <typeparamref name="TValue" /> associated with the given <typeparamref name="TKey" />. If 
         /// <paramref name="key" /> is not found in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />, will 
@@ -636,26 +587,22 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             get
             {
                 Requires.NotNullAllowStructs<TKey>(key, "key");
-                MultiValueDictionary<TKey, TValue>.InnerCollectionView result;
-                if (this._dictionary.TryGetValue(key, out result))
+                InnerCollectionView result;
+                if (_dictionary.TryGetValue(key, out result))
                 {
                     return result;
                 }
                 throw new KeyNotFoundException(Sr.GetString(Exceptions.KeyNotFound));
             }
         }
+
         /// <summary>
         /// Returns the number of <typeparamref name="TKey" />s with one or more associated <typeparamref name="TValue" />
         /// in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
         /// </summary>
         /// <value>The number of <typeparamref name="TKey" />s in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.</value>
-        public int Count
-        {
-            get
-            {
-                return this._dictionary.Count;
-            }
-        }
+        public int Count => _dictionary.Count;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the default initial capacity, and uses the default
@@ -663,8 +610,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// </summary>
         public MultiValueDictionary()
         {
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>();
+            _dictionary = new Dictionary<TKey, InnerCollectionView>();
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that is 
         /// empty, has the specified initial capacity, and uses the default <see cref="T:System.Collections.Generic.IEqualityComparer`1" />
@@ -675,8 +623,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public MultiValueDictionary(int capacity)
         {
             Requires.Range(capacity >= 0, "capacity", null);
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>(capacity);
+            _dictionary = new Dictionary<TKey, InnerCollectionView>(capacity);
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class 
         /// that is empty, has the default initial capacity, and uses the 
@@ -686,8 +635,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <remarks>If <paramref name="comparer" /> is set to null, then the default <see cref="T:System.Collections.IEqualityComparer" /> for <typeparamref name="TKey" /> is used.</remarks>
         public MultiValueDictionary(IEqualityComparer<TKey> comparer)
         {
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>(comparer);
+            _dictionary = new Dictionary<TKey, InnerCollectionView>(comparer);
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class 
         /// that is empty, has the specified initial capacity, and uses the 
@@ -700,8 +650,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public MultiValueDictionary(int capacity, IEqualityComparer<TKey> comparer)
         {
             Requires.Range(capacity >= 0, "capacity", null);
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>(capacity, comparer);
+            _dictionary = new Dictionary<TKey, InnerCollectionView>(capacity, comparer);
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt; and uses the 
@@ -713,6 +664,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             : this(enumerable, null)
         {
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt; and uses the 
@@ -725,12 +677,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public MultiValueDictionary(IEnumerable<KeyValuePair<TKey, IReadOnlyCollection<TValue>>> enumerable, IEqualityComparer<TKey> comparer)
         {
             Requires.NotNullAllowStructs<IEnumerable<KeyValuePair<TKey, IReadOnlyCollection<TValue>>>>(enumerable, "enumerable");
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>(comparer);
+            _dictionary = new Dictionary<TKey, InnerCollectionView>(comparer);
             foreach (var current in enumerable)
             {
-                this.AddRange(current.Key, current.Value);
+                AddRange(current.Key, current.Value);
             }
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;IGrouping&lt;TKey, TValue&gt;&gt; and uses the 
@@ -742,6 +695,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             : this(enumerable, null)
         {
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;IGrouping&lt;TKey, TValue&gt;&gt; and uses the 
@@ -754,12 +708,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public MultiValueDictionary(IEnumerable<IGrouping<TKey, TValue>> enumerable, IEqualityComparer<TKey> comparer)
         {
             Requires.NotNullAllowStructs<IEnumerable<IGrouping<TKey, TValue>>>(enumerable, "enumerable");
-            this._dictionary = new Dictionary<TKey, MultiValueDictionary<TKey, TValue>.InnerCollectionView>(comparer);
+            _dictionary = new Dictionary<TKey, InnerCollectionView>(comparer);
             foreach (var current in enumerable)
             {
-                this.AddRange(current.Key, current);
+                AddRange(current.Key, current);
             }
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the default initial capacity, and uses the default
@@ -792,6 +747,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (default(TValueCollection) == null) ? Activator.CreateInstance<TValueCollection>() : default(TValueCollection)
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the specified initial capacity, and uses the default
@@ -827,6 +783,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (default(TValueCollection) == null) ? Activator.CreateInstance<TValueCollection>() : default(TValueCollection)
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the default initial capacity, and uses the specified
@@ -861,6 +818,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (default(TValueCollection) == null) ? Activator.CreateInstance<TValueCollection>() : default(TValueCollection)
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the specified initial capacity, and uses the specified
@@ -898,6 +856,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (default(TValueCollection) == null) ? Activator.CreateInstance<TValueCollection>() : default(TValueCollection)
             };
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt;
@@ -936,6 +895,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt;
@@ -976,6 +936,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;&lt;TKey, TValue&gt;&gt;
@@ -1014,6 +975,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;IGrouping&lt;TKey, TValue&gt;&gt;
@@ -1054,6 +1016,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the default initial capacity, and uses the default
@@ -1088,6 +1051,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (ICollection<TValue>)collectionFactory()
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the specified initial capacity, and uses the default
@@ -1125,6 +1089,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (ICollection<TValue>)collectionFactory()
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the default initial capacity, and uses the specified
@@ -1161,6 +1126,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (ICollection<TValue>)collectionFactory()
             };
         }
+
         /// <summary>
         /// Creates a new new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> 
         /// class that is empty, has the specified initial capacity, and uses the specified
@@ -1200,6 +1166,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 _newCollectionFactory = () => (ICollection<TValue>)collectionFactory()
             };
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt;
@@ -1240,6 +1207,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;KeyValuePair&lt;TKey, IReadOnlyCollection&lt;TValue&gt;&gt;&gt;
@@ -1282,6 +1250,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;&lt;TKey, TValue&gt;&gt;
@@ -1322,6 +1291,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> class that contains 
         /// elements copied from the specified IEnumerable&lt;IGrouping&lt;TKey, TValue&gt;&gt;
@@ -1364,6 +1334,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return multiValueDictionary;
         }
+
         /// <summary>
         /// Adds the specified <typeparamref name="TKey" /> and <typeparamref name="TValue" /> to the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
         /// </summary>
@@ -1382,15 +1353,16 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public void Add(TKey key, TValue value)
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            if (!this._dictionary.TryGetValue(key, out innerCollectionView))
+            InnerCollectionView innerCollectionView;
+            if (!_dictionary.TryGetValue(key, out innerCollectionView))
             {
-                innerCollectionView = new MultiValueDictionary<TKey, TValue>.InnerCollectionView(key, this._newCollectionFactory());
-                this._dictionary.Add(key, innerCollectionView);
+                innerCollectionView = new InnerCollectionView(key, _newCollectionFactory());
+                _dictionary.Add(key, innerCollectionView);
             }
             innerCollectionView.AddValue(value);
-            this._version++;
+            _version++;
         }
+
         /// <summary>
         /// Adds a number of key-value pairs to this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />, where
         /// the key for each value is <paramref name="key" />, and the value for a pair
@@ -1407,18 +1379,19 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
             Requires.NotNullAllowStructs<IEnumerable<TValue>>(values, "values");
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            if (!this._dictionary.TryGetValue(key, out innerCollectionView))
+            InnerCollectionView innerCollectionView;
+            if (!_dictionary.TryGetValue(key, out innerCollectionView))
             {
-                innerCollectionView = new MultiValueDictionary<TKey, TValue>.InnerCollectionView(key, this._newCollectionFactory());
-                this._dictionary.Add(key, innerCollectionView);
+                innerCollectionView = new InnerCollectionView(key, _newCollectionFactory());
+                _dictionary.Add(key, innerCollectionView);
             }
             foreach (var current in values)
             {
                 innerCollectionView.AddValue(current);
             }
-            this._version++;
+            _version++;
         }
+
         /// <summary>
         /// Removes every <typeparamref name="TValue" /> associated with the given <typeparamref name="TKey" />
         /// from the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
@@ -1429,14 +1402,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public bool Remove(TKey key)
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            if (this._dictionary.TryGetValue(key, out innerCollectionView) && this._dictionary.Remove(key))
+            InnerCollectionView innerCollectionView;
+            if (_dictionary.TryGetValue(key, out innerCollectionView) && _dictionary.Remove(key))
             {
-                this._version++;
+                _version++;
                 return true;
             }
             return false;
         }
+
         /// <summary>
         /// Removes the first instance (if any) of the given <typeparamref name="TKey" />-<typeparamref name="TValue" /> 
         /// pair from this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />. 
@@ -1454,18 +1428,19 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public bool Remove(TKey key, TValue value)
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            if (this._dictionary.TryGetValue(key, out innerCollectionView) && innerCollectionView.RemoveValue(value))
+            InnerCollectionView innerCollectionView;
+            if (_dictionary.TryGetValue(key, out innerCollectionView) && innerCollectionView.RemoveValue(value))
             {
                 if (innerCollectionView.Count == 0)
                 {
-                    this._dictionary.Remove(key);
+                    _dictionary.Remove(key);
                 }
-                this._version++;
+                _version++;
                 return true;
             }
             return false;
         }
+
         /// <summary>
         /// Determines if the given <typeparamref name="TKey" />-<typeparamref name="TValue" /> 
         /// pair exists within this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
@@ -1477,9 +1452,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public bool Contains(TKey key, TValue value)
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            return this._dictionary.TryGetValue(key, out innerCollectionView) && innerCollectionView.Contains(value);
+            InnerCollectionView innerCollectionView;
+            return _dictionary.TryGetValue(key, out innerCollectionView) && innerCollectionView.Contains(value);
         }
+
         /// <summary>
         /// Determines if the given <typeparamref name="TValue" /> exists within this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
         /// </summary>
@@ -1487,7 +1463,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <returns><c>true</c> if the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> contains the <paramref name="value" />; otherwise <c>false</c></returns>      
         public bool ContainsValue(TValue value)
         {
-            foreach (var current in this._dictionary.Values)
+            foreach (var current in _dictionary.Values)
             {
                 if (current.Contains(value))
                 {
@@ -1496,6 +1472,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
             return false;
         }
+
         /// <summary>
         /// Gets a read-only <see cref="T:System.Linq.ILookup`2" /> view of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />
         /// that changes as the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> changes.
@@ -1503,17 +1480,19 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <value>a read-only <see cref="T:System.Linq.ILookup`2" /> view of the <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /></value>
         public ILookup<TKey, TValue> AsLookup()
         {
-            return new MultiValueDictionary<TKey, TValue>.MultiLookup(this);
+            return new MultiLookup(this);
         }
+
         /// <summary>
         /// Removes every <typeparamref name="TKey" /> and <typeparamref name="TValue" /> from this 
         /// <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
         /// </summary>
         public void Clear()
         {
-            this._dictionary.Clear();
-            this._version++;
+            _dictionary.Clear();
+            _version++;
         }
+
         /// <summary>
         /// Determines if the given <typeparamref name="TKey" /> exists within this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" /> and has
         /// at least one <typeparamref name="TValue" /> associated with it.
@@ -1525,8 +1504,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public bool ContainsKey(TKey key)
         {
             Requires.NotNullAllowStructs<TKey>(key, "key");
-            return this._dictionary.ContainsKey(key);
+            return _dictionary.ContainsKey(key);
         }
+
         /// <summary>
         /// Attempts to get the <typeparamref name="TValue" /> associated with the given
         /// <typeparamref name="TKey" /> and place it into <paramref name="value" />.
@@ -1543,11 +1523,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <exception cref="T:System.ArgumentNullException"><paramref name="key" /> must be non-null</exception>
         public bool TryGetValue(TKey key, out IReadOnlyCollection<TValue> value)
         {
-            MultiValueDictionary<TKey, TValue>.InnerCollectionView innerCollectionView;
-            var result = this._dictionary.TryGetValue(key, out innerCollectionView);
+            InnerCollectionView innerCollectionView;
+            var result = _dictionary.TryGetValue(key, out innerCollectionView);
             value = innerCollectionView;
             return result;
         }
+
         /// <summary>
         /// Get an Enumerator over the <typeparamref name="TKey" />-<see cref="T:System.Collections.Generic.IReadOnlyCollection`1" />
         /// pairs in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.
@@ -1556,11 +1537,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// pairs in this <see cref="T:System.Collections.Generic.MultiValueDictionary`2" />.</returns>
         public IEnumerator<KeyValuePair<TKey, IReadOnlyCollection<TValue>>> GetEnumerator()
         {
-            return new MultiValueDictionary<TKey, TValue>.Enumerator(this);
+            return new Enumerator(this);
         }
+
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return new MultiValueDictionary<TKey, TValue>.Enumerator(this);
+            return new Enumerator(this);
         }
     }
 }

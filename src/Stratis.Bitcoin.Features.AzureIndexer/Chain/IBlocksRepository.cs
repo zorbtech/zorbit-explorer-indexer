@@ -7,6 +7,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
     public interface IBlocksRepository
     {
         Block GetStoreTip();
+
         IEnumerable<Block> GetBlocks(IEnumerable<uint256> hashes, CancellationToken cancellationToken);
     }
 
@@ -20,8 +21,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             _node = node;
             _repo = node.NodeService<BlockStore.IBlockRepository>() as BlockStore.BlockRepository;
         }
-
-        #region IBlocksRepository Members
 
         public Block GetStoreTip()
         {
@@ -39,7 +38,5 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
                     yield return _repo.GetAsync(hash).GetAwaiter().GetResult();
             }
         }
-
-        #endregion
     }
 }

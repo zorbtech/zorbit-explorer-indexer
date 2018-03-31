@@ -12,6 +12,20 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 {
     internal static class Helper
     {
+        internal static readonly JsonSerializerSettings Settings = new JsonSerializerSettings();
+
+        internal static string Format => new string(Enumerable.Range(0, int.MaxValue.ToString().Length).Select(c => '0').ToArray());
+
+        private const int ColumnMaxSize = 63000;
+
+        private static readonly char[] Digit = Enumerable.Range(0, 10).Select(c => c.ToString()[0]).ToArray();
+ 
+        static Helper()
+        {
+            Settings.Converters.Add(new ScriptJsonConverter());
+            Settings.Converters.Add(new WalletRuleConverter());
+        }
+
         internal static List<T> DeserializeList<T>(byte[] bytes) where T : IBitcoinSerializable, new()
         {
             var outpoints = new List<T>();
@@ -20,7 +34,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 return outpoints;
             }
 
-            using (var ms = new MemoryStream(bytes) {Position = 0})
+            using (var ms = new MemoryStream(bytes) { Position = 0 })
             {
                 while (ms.Position != ms.Length)
                 {
@@ -33,7 +47,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return outpoints;
         }
 
-        public static byte[] SerializeList<T>(IEnumerable<T> items) where T : IBitcoinSerializable
+        internal static byte[] SerializeList<T>(IEnumerable<T> items) where T : IBitcoinSerializable
         {
             using (var ms = new MemoryStream())
             {
@@ -46,7 +60,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-        public static byte[] GetBytes(MemoryStream stream)
+        internal static byte[] GetBytes(MemoryStream stream)
         {
             if (stream.Length == 0)
             {
@@ -57,14 +71,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             Array.Resize(ref buffer, (int)stream.Length);
             return buffer;
         }
-        internal static void SetThrottling()
-        {
-            ServicePointManager.UseNagleAlgorithm = false;
-            ServicePointManager.Expect100Continue = false;
-            ServicePointManager.DefaultConnectionLimit = 1000;
-        }
 
-        public static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
+        internal static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
         {
             if (dictionary.ContainsKey(key))
             {
@@ -75,8 +83,18 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return true;
         }
 
-        private const int ColumnMaxSize = 63000;
+        internal static string GetPartitionKey(int bits, uint nbr)
+        {
+            var bytes = BitConverter.GetBytes(nbr);
+            return GetPartitionKey(bits, bytes, 0, 4);
+        }
 
+        internal static bool IsError(Exception ex, string code)
+        {
+            var actualCode = (ex as StorageException)?.RequestInformation?.ExtendedErrorInformation?.ErrorCode;
+            return actualCode == code;
+        }
+        
         internal static void SetEntityProperty(DynamicTableEntity entity, string property, byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -138,24 +156,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return result.ToString("X2");
         }
 
-        private static JsonSerializerSettings _settings;
-
-        internal static JsonSerializerSettings Settings
-        {
-            get
-            {
-                if (_settings != null)
-                {
-                    return _settings;
-                }
-
-                _settings = new JsonSerializerSettings();
-                _settings.Converters.Add(new ScriptJsonConverter());
-                _settings.Converters.Add(new WalletRuleConverter());
-                return _settings;
-            }
-        }
-
         internal static string Serialize(object obj)
         {
             return JsonConvert.SerializeObject(obj, Settings);
@@ -166,15 +166,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return JsonConvert.DeserializeObject<T>(str, Settings);
         }
 
-        public static bool IsError(Exception ex, string code)
+        internal static void SetThrottling()
         {
-            var actualCode = (ex as StorageException)?.RequestInformation?.ExtendedErrorInformation?.ErrorCode;
-            return actualCode == code;
+            ServicePointManager.UseNagleAlgorithm = false;
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.DefaultConnectionLimit = 1000;
         }
-
-        internal static string Format = new string(Enumerable.Range(0, int.MaxValue.ToString().Length).Select(c => '0').ToArray());
-
-        private static readonly char[] Digit = Enumerable.Range(0, 10).Select(c => c.ToString()[0]).ToArray();
 
         //Convert '012' to '987'
         internal static string HeightToString(int height)
@@ -198,12 +195,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         internal static int StringToHeight(string rowkey)
         {
             return int.Parse(ToggleChars(rowkey));
-        }
-
-        public static string GetPartitionKey(int bits, uint nbr)
-        {
-            var bytes = BitConverter.GetBytes(nbr);
-            return GetPartitionKey(bits, bytes, 0, 4);
         }
     }
 }

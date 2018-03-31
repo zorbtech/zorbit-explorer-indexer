@@ -24,26 +24,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 
             public Entity(uint256 txId)
             {
-                if (txId == null)
-                {
-                    throw new ArgumentNullException("txId");
-                }
-
                 Timestamp = DateTimeOffset.UtcNow;
-                TxId = txId;
-            }
-
-            public Entity(uint256 txId, Transaction tx, uint256 blockId)
-            {
-                if (txId == null)
-                    txId = tx.GetHash();
-                Timestamp = DateTimeOffset.UtcNow;
-                TxId = txId;
-                Transaction = tx;
-                BlockId = blockId;
-                Type = blockId == null ?
-                    TransactionEntryType.Mempool :
-                    TransactionEntryType.ConfirmedTransaction;
+                TxId = txId ?? throw new ArgumentNullException("txId");
             }
 
             public Entity(DynamicTableEntity entity)
@@ -53,20 +35,26 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
                 Timestamp = entity.Timestamp;
                 TxId = uint256.Parse(splitted[0]);
                 Type = GetType(splitted[1]);
+
                 if (splitted.Length >= 3 && splitted[2] != string.Empty)
+                {
                     BlockId = uint256.Parse(splitted[2]);
+                }
+
                 var bytes = Helper.GetEntityProperty(entity, "a");
                 if (bytes != null && bytes.Length != 0)
                 {
                     Transaction = new Transaction();
                     Transaction.ReadWrite(bytes);
                 }
+
                 bytes = Helper.GetEntityProperty(entity, "b");
                 if (bytes != null && bytes.Length != 0)
                 {
                     ColoredTransaction = new ColoredTransaction();
                     ColoredTransaction.ReadWrite(bytes);
                 }
+
                 PreviousTxOuts = Helper.DeserializeList<TxOut>(Helper.GetEntityProperty(entity, "c"));
 
                 var timestamp = Helper.GetEntityProperty(entity, "d");
@@ -78,14 +66,25 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 
             public Entity(uint256 txId, ColoredTransaction colored)
             {
-                if (txId == null)
-                {
-                    throw new ArgumentNullException("txId");
-                }
-
-                TxId = txId;
+                TxId = txId ?? throw new ArgumentNullException("txId");
                 ColoredTransaction = colored;
                 Type = TransactionEntryType.Colored;
+            }
+
+            public Entity(uint256 txId, Transaction tx, uint256 blockId)
+            {
+                if (txId == null)
+                {
+                    txId = tx.GetHash();
+                }
+
+                Timestamp = DateTimeOffset.UtcNow;
+                TxId = txId;
+                Transaction = tx;
+                BlockId = blockId;
+                Type = blockId == null ?
+                    TransactionEntryType.Mempool :
+                    TransactionEntryType.ConfirmedTransaction;
             }
 
             public static ulong ToUInt64(byte[] value, int index)
@@ -102,14 +101,23 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 
             public DynamicTableEntity CreateTableEntity()
             {
-                var entity = new DynamicTableEntity();
-                entity.ETag = "*";
-                entity.PartitionKey = PartitionKey;
-                entity.RowKey = $"{TxId}-{TypeLetter}-{BlockId}";
+                var entity = new DynamicTableEntity
+                {
+                    ETag = "*",
+                    PartitionKey = PartitionKey,
+                    RowKey = $"{TxId}-{TypeLetter}-{BlockId}"
+                };
+
                 if (Transaction != null)
+                {
                     Helper.SetEntityProperty(entity, "a", Transaction.ToBytes());
+                }
+
                 if (ColoredTransaction != null)
+                {
                     Helper.SetEntityProperty(entity, "b", ColoredTransaction.ToBytes());
+                }
+
                 Helper.SetEntityProperty(entity, "c", Helper.SerializeList(PreviousTxOuts));
                 Helper.SetEntityProperty(entity, "d", NBitcoin.Utils.ToBytes((ulong)Timestamp.UtcTicks, true));
                 return entity;
@@ -213,9 +221,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             get
             {
                 if (SpentCoins == null || Transaction == null)
+                {
                     return null;
+                }
+
                 if (Transaction.IsCoinBase)
+                {
                     return Money.Zero;
+                }
+
                 return SpentCoins.Select(o => o.TxOut.Value).Sum() - Transaction.TotalOut;
             }
         }

@@ -11,8 +11,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 {
     public class IndexerTrace
     {
+        private const int OneMbHeight = 390000;
         private static ILogger _logger = NullLogger.Instance;
-		public static void Configure(ILoggerFactory factory)
+        private static readonly decimal A = 0.0000221438236661323m;
+        private static readonly decimal B = -8.492328726823666132321613096m;
+
+        public static void Configure(ILoggerFactory factory)
 		{
 			_logger = factory.CreateLogger("Stratis.Bitcoin.Features.AzureIndexer");
 		}
@@ -51,7 +55,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 			_logger.LogInformation($"Checkpoint {checkpointName} saved at {ToString(block)}");
         }
 
-
         internal static void ErrorWhileImportingEntitiesToAzure(ITableEntity[] entities, Exception ex)
         {
             var builder = new StringBuilder();
@@ -69,7 +72,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             _logger.LogInformation("Retry worked");
         }
 
-        public static string Pretty(TimeSpan span)
+        internal static string Pretty(TimeSpan span)
         {
             if (span == TimeSpan.Zero)
                 return "0m";
@@ -101,8 +104,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         {
 			_logger.LogError($"Missing transaction from index while fetching outputs {txid}");
         }
-
-
+        
         internal static void InputChainTip(ChainedBlock block)
         {
             _logger.LogInformation($"The input chain tip is at height {ToString(block)}");
@@ -157,29 +159,33 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 			_logger.LogInformation("No fork found with the stored chain");
         }
 
-        public static void Processed(int height, int totalHeight, Queue<DateTime> lastLogs, Queue<int> lastHeights)
+        internal static void Processed(int height, int totalHeight, Queue<DateTime> lastLogs, Queue<int> lastHeights)
         {
             var lastLog = lastLogs.LastOrDefault();
-            if (DateTime.UtcNow - lastLog > TimeSpan.FromSeconds(10))
+            if (DateTime.UtcNow - lastLog <= TimeSpan.FromSeconds(10))
             {
-                if (lastHeights.Count > 0)
-                {
-                    var lastHeight = lastHeights.Peek();
-                    var time = DateTimeOffset.UtcNow - lastLogs.Peek();
+                return;
+            }
 
-                    var downloadedSize = GetSize(lastHeight, height);
-                    var remainingSize = GetSize(height, totalHeight);
-                    var estimatedTime = downloadedSize < 1.0m ? TimeSpan.FromDays(999.0)
-                        : TimeSpan.FromTicks((long)((remainingSize / downloadedSize) * time.Ticks));
-					_logger.LogInformation("Blocks {0}/{1} (estimate : {2})", height, totalHeight, Pretty(estimatedTime));
-                }
-                lastLogs.Enqueue(DateTime.UtcNow);
-                lastHeights.Enqueue(height);
-                while (lastLogs.Count > 20)
-                {
-                    lastLogs.Dequeue();
-                    lastHeights.Dequeue();
-                }
+            if (lastHeights.Count > 0)
+            {
+                var lastHeight = lastHeights.Peek();
+                var time = DateTimeOffset.UtcNow - lastLogs.Peek();
+
+                var downloadedSize = GetSize(lastHeight, height);
+                var remainingSize = GetSize(height, totalHeight);
+                var estimatedTime = downloadedSize < 1.0m ? TimeSpan.FromDays(999.0)
+                    : TimeSpan.FromTicks((long)((remainingSize / downloadedSize) * time.Ticks));
+                _logger.LogInformation("Blocks {0}/{1} (estimate : {2})", height, totalHeight, Pretty(estimatedTime));
+            }
+
+            lastLogs.Enqueue(DateTime.UtcNow);
+            lastHeights.Enqueue(height);
+
+            while (lastLogs.Count > 20)
+            {
+                lastLogs.Dequeue();
+                lastHeights.Dequeue();
             }
         }
 
@@ -194,17 +200,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             return cumul;
         }
 
-        private static readonly int OneMbHeight = 390000;
-
-		private static decimal EstimateSize(decimal height)
+        private static decimal EstimateSize(decimal height)
         {
 			if(height > OneMbHeight)
 				return 1.0m;
             return (decimal)Math.Exp((double)(A * height + B));
         }
-
-        private static readonly decimal A = 0.0000221438236661323m;
-        private static readonly decimal B = -8.492328726823666132321613096m;
-
     }
 }

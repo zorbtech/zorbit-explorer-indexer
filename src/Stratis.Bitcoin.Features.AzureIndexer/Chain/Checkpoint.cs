@@ -41,6 +41,24 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             BlockLocator.Blocks.AddRange(list);
         }
 
+        public static async Task<Checkpoint> LoadBlobAsync(CloudBlockBlob blob, Network network)
+        {
+            var checkpointName = string.Join("/", blob.Name.Split('/').Skip(1).ToArray());
+            var ms = new MemoryStream();
+            try
+            {
+                await blob.DownloadToStreamAsync(ms).ConfigureAwait(false);
+                ms.Position = 0;
+            }
+            catch (StorageException ex)
+            {
+                if (ex.RequestInformation == null || ex.RequestInformation.HttpStatusCode != 404)
+                    throw;
+            }
+            var checkpoint = new Checkpoint(checkpointName, network, ms, blob);
+            return checkpoint;
+        }
+
         public bool SaveProgress(ChainedBlock tip)
         {
             return SaveProgress(tip.GetLocator());
@@ -74,6 +92,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             }
         }
 
+        public override string ToString()
+        {
+            return CheckpointName;
+        }
+
         private async Task<bool> SaveProgressAsync()
         {
             var bytes = BlockLocator.ToBytes();
@@ -94,34 +117,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             return true;
         }
 
-        public static async Task<Checkpoint> LoadBlobAsync(CloudBlockBlob blob, Network network)
-        {
-            var checkpointName = string.Join("/", blob.Name.Split('/').Skip(1).ToArray());
-            var ms = new MemoryStream();
-            try
-            {
-                await blob.DownloadToStreamAsync(ms).ConfigureAwait(false);
-                ms.Position = 0;
-            }
-            catch (StorageException ex)
-            {
-                if (ex.RequestInformation == null || ex.RequestInformation.HttpStatusCode != 404)
-                    throw;
-            }
-            var checkpoint = new Checkpoint(checkpointName, network, ms, blob);
-            return checkpoint;
-        }
-
-        public override string ToString()
-        {
-            return CheckpointName;
-        }
-
         public BlockLocator BlockLocator { get; private set; }
 
         public string CheckpointName { get; }
 
         public uint256 Genesis => BlockLocator.Blocks[BlockLocator.Blocks.Count - 1];
     }
-
 }

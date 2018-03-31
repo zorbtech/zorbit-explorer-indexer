@@ -19,49 +19,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         private const string ChainTableName = "chain";
         private const string WalletsTableName = "wallets";
 
-        public Network Network { get; set; }
-
-        public string AzureConnectionString { get; set; }
-
-        public bool AzureStorageEmulatorUsed { get; set; }
-
-        public string Node { get; set; }
-
-        public string CheckpointSetName { get; set; }
-
-        public string StorageNamespace { get; set; }
-
-        public CloudStorageAccount StorageAccount { get; set; }
-
         private CloudTableClient _tableClient;
-        public CloudTableClient TableClient
-        {
-            get
-            {
-                if (this._tableClient != null)
-                {
-                    return this._tableClient;
-                }
-                this._tableClient = this.StorageAccount.CreateCloudTableClient();
-                return this._tableClient;
-            }
-            set => this._tableClient = value;
-        }
-
         private CloudBlobClient _blobClient;
-        public CloudBlobClient BlobClient
-        {
-            get
-            {
-                if (this._blobClient != null)
-                {
-                    return this._blobClient;
-                }
-                this._blobClient = this.StorageAccount.CreateCloudBlobClient();
-                return this._blobClient;
-            }
-            set => this._blobClient = value;
-        }
 
         public IndexerConfiguration()
         {
@@ -70,8 +29,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 
         public IndexerConfiguration(IConfiguration config)
         {
-            var account = GetValue(config, "Azure.AccountName", true);
-            var key = GetValue(config, "Azure.Key", true);
             this.StorageNamespace = GetValue(config, "StorageNamespace", false);
             var network = GetValue(config, "Bitcoin.Network", false) ?? "Main";
             this.Network = Network.GetNetwork(network);
@@ -125,15 +82,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             yield return GetWalletRulesTable();
         }
 
-        protected static string GetValue(IConfiguration config, string setting, bool required)
-        {
-            var result = config[setting];
-            result = String.IsNullOrWhiteSpace(result) ? null : result;
-            if (result == null && required)
-                throw new IndexerConfigurationErrorsException($"AppSetting {setting} not found");
-            return result;
-        }
-
         public AzureIndexer CreateIndexer()
         {
             return new AzureIndexer(this);
@@ -178,5 +126,57 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         {
             return (StorageNamespace + storageObjectName).ToLowerInvariant();
         }
+
+        protected static string GetValue(IConfiguration config, string setting, bool required)
+        {
+            var result = config[setting];
+            result = String.IsNullOrWhiteSpace(result) ? null : result;
+            if (result == null && required)
+                throw new IndexerConfigurationErrorsException($"AppSetting {setting} not found");
+            return result;
+        }
+
+        public CloudTableClient TableClient
+        {
+            get
+            {
+                if (this._tableClient != null)
+                {
+                    return this._tableClient;
+                }
+                this._tableClient = this.StorageAccount.CreateCloudTableClient();
+                return this._tableClient;
+            }
+            set => this._tableClient = value;
+        }
+
+
+        public CloudBlobClient BlobClient
+        {
+            get
+            {
+                if (this._blobClient != null)
+                {
+                    return this._blobClient;
+                }
+                this._blobClient = this.StorageAccount.CreateCloudBlobClient();
+                return this._blobClient;
+            }
+            set => this._blobClient = value;
+        }
+
+        public Network Network { get; set; }
+
+        public string AzureConnectionString { get; set; }
+
+        public bool AzureStorageEmulatorUsed { get; set; }
+
+        public string Node { get; set; }
+
+        public string CheckpointSetName { get; set; }
+
+        public string StorageNamespace { get; set; }
+
+        public CloudStorageAccount StorageAccount { get; set; }
     }
 }

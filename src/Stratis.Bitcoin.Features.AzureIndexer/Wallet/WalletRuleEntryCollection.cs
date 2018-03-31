@@ -8,7 +8,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Wallet
     public class WalletRuleEntryCollection : IEnumerable<WalletRuleEntry>
     {
         private readonly List<WalletRuleEntry> _walletRules;
-        private readonly HashSet<Tuple<string,string>> _walletsIds = new HashSet<Tuple<string,string>>();
+        private readonly HashSet<Tuple<string, string>> _walletsIds = new HashSet<Tuple<string, string>>();
 
         private readonly MultiValueDictionary<string, WalletRuleEntry> _entriesByWallet;
         private readonly ILookup<string, WalletRuleEntry> _entriesByWalletLookup;
@@ -16,51 +16,44 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Wallet
         private readonly MultiValueDictionary<Script, WalletRuleEntry> _entriesByAddress;
         private readonly ILookup<Script, WalletRuleEntry> _entriesByAddressLookup;
 
-
         internal WalletRuleEntryCollection(IEnumerable<WalletRuleEntry> walletRules)
         {
-            if(walletRules == null)
+            if (walletRules == null)
                 throw new ArgumentNullException("walletRules");
 
-            _walletRules = new List<WalletRuleEntry>();            
+            _walletRules = new List<WalletRuleEntry>();
             _entriesByWallet = new MultiValueDictionary<string, WalletRuleEntry>();
             _entriesByWalletLookup = _entriesByWallet.AsLookup();
 
             _entriesByAddress = new MultiValueDictionary<Script, WalletRuleEntry>();
             _entriesByAddressLookup = _entriesByAddress.AsLookup();
-            foreach(var rule in walletRules)
+            foreach (var rule in walletRules)
             {
                 Add(rule);
             }
         }
 
-        public int Count
-        {
-            get
-            {
-                return _walletRules.Count;
-            }
-        }
-
         public bool Add(WalletRuleEntry entry)
         {
-            if(!_walletsIds.Add(GetId(entry)))
+            if (!_walletsIds.Add(GetId(entry)))
+            {
                 return false;
+            }
+
             _walletRules.Add(entry);
             _entriesByWallet.Add(entry.WalletId, entry);
-            var rule = entry.Rule as ScriptRule;
-            if(rule != null)
+
+            if (entry.Rule is ScriptRule rule)
+            {
                 _entriesByAddress.Add(rule.ScriptPubKey, entry);
+            }
+
             return true;
         }
 
-        private Tuple<string,string> GetId(WalletRuleEntry entry)
-        {
-            return Tuple.Create(entry.WalletId, entry.Rule.Id);
-        }
         public void AddRange(IEnumerable<WalletRuleEntry> entries)
         {
-            foreach(var entry in entries)
+            foreach (var entry in entries)
                 Add(entry);
         }
 
@@ -80,22 +73,21 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Wallet
             return _entriesByAddressLookup[script];
         }
 
-        #region IEnumerable<WalletRuleEntry> Members
-
         public IEnumerator<WalletRuleEntry> GetEnumerator()
         {
             return _walletRules.GetEnumerator();
         }
-
-        #endregion
-
-        #region IEnumerable Members
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }
 
-        #endregion
+        private static Tuple<string, string> GetId(WalletRuleEntry entry)
+        {
+            return Tuple.Create(entry.WalletId, entry.Rule.Id);
+        }
+
+        public int Count => _walletRules.Count;
     }
 }

@@ -8,10 +8,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 {
     public class CustomThreadPoolTaskScheduler : TaskScheduler, IDisposable
     {
-        private readonly int _threadCount;
+        private readonly AutoResetEvent _finished = new AutoResetEvent(false);
+        private readonly CancellationTokenSource _cancel = new CancellationTokenSource();
+        private readonly BlockingCollection<Task> _tasks;
+        private int _availableThreads;
+        private bool _disposed;
+
         public CustomThreadPoolTaskScheduler(int threadCount, int maxQueued, string name = null)
         {
-            _threadCount = threadCount;
+            ThreadsCount = threadCount;
             _tasks = new BlockingCollection<Task>(new ConcurrentQueue<Task>(), maxQueued);
             _availableThreads = threadCount;
             for (var i = 0 ; i < threadCount ; i++)
@@ -24,15 +29,41 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-        public override int MaximumConcurrencyLevel
+        public void Dispose()
         {
-            get
+            _disposed = true;
+            _cancel.Cancel();
+        }
+
+        public void WaitFinished()
+        {
+            AssertNotDisposed();
+            while (true)
             {
-                return _threadCount;
+                if (_disposed)
+                    return;
+                if (RemainingTasks == 0)
+                    return;
+                _finished.WaitOne(1000);
             }
         }
 
-        private readonly CancellationTokenSource _cancel = new CancellationTokenSource();
+        protected override IEnumerable<Task> GetScheduledTasks()
+        {
+            return _tasks;
+        }
+
+        protected override void QueueTask(Task task)
+        {
+            AssertNotDisposed();
+            _tasks.Add(task);
+        }
+
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
+        {
+            AssertNotDisposed();
+            return false;
+        }
 
         private void Do(object state)
         {
@@ -52,86 +83,20 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-        public int QueuedCount
-        {
-            get
-            {
-                return _tasks.Count;
-            }
-        }
-
-        private int _availableThreads;
-        public int AvailableThreads
-        {
-            get
-            {
-                return _availableThreads;
-            }
-        }
-
-        public int RemainingTasks
-        {
-            get
-            {
-                return (_threadCount - AvailableThreads) + QueuedCount;
-            }
-        }
-
-        public int ThreadsCount
-        {
-            get
-            {
-                return _threadCount;
-            }
-        }
-
-        private readonly BlockingCollection<Task> _tasks;
-        protected override IEnumerable<Task> GetScheduledTasks()
-        {
-            return _tasks;
-        }
-
-        protected override void QueueTask(Task task)
-        {
-            AssertNotDisposed();
-            _tasks.Add(task);
-        }
-
-        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
-        {
-            AssertNotDisposed();
-            return false;
-        }
-
-        #region IDisposable Members
-
-        private bool _disposed;
-        public void Dispose()
-        {
-            _disposed = true;
-            _cancel.Cancel();
-        }
-
-        #endregion
-
-        private readonly AutoResetEvent _finished = new AutoResetEvent(false);
-        public void WaitFinished()
-        {
-            AssertNotDisposed();
-            while (true)
-            {
-                if (_disposed)
-                    return;
-                if (RemainingTasks == 0)
-                    return;
-                _finished.WaitOne(1000);
-            }
-        }
-
         private void AssertNotDisposed()
         {
             if (_disposed)
                 throw new ObjectDisposedException("CustomThreadPoolTaskScheduler");
         }
+
+        public override int MaximumConcurrencyLevel => ThreadsCount;
+
+        public int QueuedCount => _tasks.Count;
+
+        public int AvailableThreads => _availableThreads;
+
+        public int RemainingTasks => (ThreadsCount - AvailableThreads) + QueuedCount;
+
+        public int ThreadsCount { get; }
     }
 }

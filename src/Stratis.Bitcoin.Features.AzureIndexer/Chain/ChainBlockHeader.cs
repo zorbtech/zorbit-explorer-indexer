@@ -3,54 +3,46 @@ using NBitcoin;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 {
-	public static class ChainChangeEntryExtensions
-	{
-		public static void UpdateChain(this IEnumerable<ChainBlockHeader> entries, ChainBase chain)
-		{
-			var toApply = new Stack<ChainBlockHeader>();
-			foreach(var entry in entries)
-			{
-				var prev = chain.GetBlock(entry.Header.HashPrevBlock);
-				if(prev == null)
-					toApply.Push(entry);
-				else
-				{
-					toApply.Push(entry);
-					break;
-				}
-			}
-			while(toApply.Count > 0)
-			{
-				var newTip = toApply.Pop();
+    public static class ChainChangeEntryExtensions
+    {
+        public static void UpdateChain(this IEnumerable<ChainBlockHeader> entries, ChainBase chain)
+        {
+            var toApply = new Stack<ChainBlockHeader>();
+            foreach (var entry in entries)
+            {
+                var prev = chain.GetBlock(entry.Header.HashPrevBlock);
+                if (prev == null)
+                {
+                    toApply.Push(entry);
+                }
+                else
+                {
+                    toApply.Push(entry);
+                    break;
+                }
+            }
 
-				var chained = new ChainedBlock(newTip.Header, newTip.BlockId, chain.GetBlock(newTip.Header.HashPrevBlock));
-				chain.SetTip(chained);
-			}
-		}
-	}
+            while (toApply.Count > 0)
+            {
+                var newTip = toApply.Pop();
 
-	public class ChainBlockHeader
-	{
-		public uint256 BlockId
-		{
-			get;
-			set;
-		}
+                var chained = new ChainedBlock(newTip.Header, newTip.BlockId, chain.GetBlock(newTip.Header.HashPrevBlock));
+                chain.SetTip(chained);
+            }
+        }
+    }
 
-		public int Height
-		{
-			get;
-			set;
-		}
-		public BlockHeader Header
-		{
-			get;
-			set;
-		}
+    public class ChainBlockHeader
+    {
+        public override string ToString()
+        {
+            return $"{Height}-{BlockId}";
+        }
 
-		public override string ToString()
-		{
-			return $"{Height}-{BlockId}";
-		}
-	}
+        public uint256 BlockId { get; set; }
+
+        public int Height { get; set; }
+
+        public BlockHeader Header { get; set; }
+    }
 }

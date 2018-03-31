@@ -68,9 +68,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Utils
 				yield return property;
 			}
 		}
+
 		#endregion
 
-		
 		internal static string ReadAndUpdateTableEntity(ITableEntity entity, ODataEntry entry, OperationContext ctx)
 		{
 			entity.ETag = entry.ETag;
@@ -98,12 +98,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Utils
 				}
 			}
 
+            entity.ReadEntity(entityProperties, ctx);
 
-			entity.ReadEntity(entityProperties, ctx);
-
-
-
-			return entry.ETag;
+            return entry.ETag;
 		}
 	}
 }

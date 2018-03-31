@@ -5,38 +5,18 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Utils
 {
     public class Spendable : IBitcoinSerializable
     {
+        private OutPoint _outPoint;
+        private TxOut _out;
+
         public Spendable()
         {
 
         }
         public Spendable(OutPoint output, TxOut txout)
         {
-            if(output == null)
-                throw new ArgumentNullException("output");
-            if(txout == null)
-                throw new ArgumentNullException("txout");
-            _out = txout;
-            _outPoint = output;
+            _out = txout ?? throw new ArgumentNullException("txout");
+            _outPoint = output ?? throw new ArgumentNullException("output");
         }
-
-        private OutPoint _outPoint;
-        public OutPoint OutPoint
-        {
-            get
-            {
-                return _outPoint;
-            }
-        }
-        private TxOut _out;
-        public TxOut TxOut
-        {
-            get
-            {
-                return _out;
-            }
-        }
-
-        #region IBitcoinSerializable Members
 
         public void ReadWrite(BitcoinStream stream)
         {
@@ -54,15 +34,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Utils
             }
         }
 
-        #endregion
-
-
         public override string ToString()
         {
-            if(TxOut != null && TxOut.Value != null)
-                return TxOut.Value.ToString();
-            return "?";
+            return TxOut != null && TxOut.Value != null ? TxOut.Value.ToString() : "?";
         }
 
+        public OutPoint OutPoint => _outPoint;
+
+        public TxOut TxOut => _out;
     }
 }
