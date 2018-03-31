@@ -26,6 +26,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
     public class AzureIndexer
     {
+        internal const int BlockHeaderPerRow = 6;
+
         public AzureIndexer(IndexerConfiguration configuration)
         {
             this.TaskScheduler = TaskScheduler.Default;
@@ -67,18 +69,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return this.IndexAsync(balances.Select(b => b.ToEntity()), this.Configuration.GetBalanceTable());
         }
 
-        private void Index(IEnumerable<ITableEntity> entities, CloudTable table)
-        {
-            var task = new IndexTableEntitiesTask(this.Configuration, table);
-            task.Index(entities, this.TaskScheduler);
-        }
-
-        private Task IndexAsync(IEnumerable<ITableEntity> entities, CloudTable table)
-        {
-            var task = new IndexTableEntitiesTask(this.Configuration, table);
-            return task.IndexAsync(entities, this.TaskScheduler);
-        }
-
         public void IndexChain(ChainBase chain, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (chain == null)
@@ -90,7 +80,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
             using (IndexerTrace.NewCorrelation("Index main chain to azure started"))
             {
-                this.Configuration.GetChainTable().CreateIfNotExistsAsync().GetAwaiter().GetResult();
+                this.Configuration.GetChainTable().SafeCreateIfNotExistsAsync(cancellationToken).GetAwaiter().GetResult();
                 IndexerTrace.InputChainTip(chain.Tip);
                 var client = this.Configuration.CreateIndexerClient();
                 var changes = client.GetChainChangesUntilFork(chain.Tip, true, cancellationToken).ToList();
@@ -104,6 +94,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                         IndexerTrace.InputChainIsLate();
                         return;
                     }
+
                     height = changes[changes.Count - 1].Height + 1;
                     if (height > chain.Height)
                     {
@@ -238,7 +229,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return this.Configuration.CreateIndexerClient().GetMainChain();
         }
 
-        internal const int BlockHeaderPerRow = 6;
         internal void Index(ChainBase chain, int startHeight, CancellationToken cancellationToken = default(CancellationToken))
         {
             var entries = new List<ChainPartEntry>(((chain.Height - startHeight) / BlockHeaderPerRow) + 5);
@@ -270,6 +260,18 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
 
             this.Index(entries, cancellationToken);
+        }
+
+        private void Index(IEnumerable<ITableEntity> entities, CloudTable table)
+        {
+            var task = new IndexTableEntitiesTask(this.Configuration, table);
+            task.Index(entities, this.TaskScheduler);
+        }
+
+        private Task IndexAsync(IEnumerable<ITableEntity> entities, CloudTable table)
+        {
+            var task = new IndexTableEntitiesTask(this.Configuration, table);
+            return task.IndexAsync(entities, this.TaskScheduler);
         }
 
         private void SetThrottling()
