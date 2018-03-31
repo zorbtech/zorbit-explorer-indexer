@@ -14,6 +14,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Stratis.Bitcoin.Features.AzureIndexer.Balance;
+using Stratis.Bitcoin.Features.AzureIndexer.Chain;
+using Stratis.Bitcoin.Features.AzureIndexer.Indexing;
 using Xunit;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
@@ -21,10 +24,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
     public class TestClass
     {
         /// <summary>Indicates whether Azure Storage Emulator availability has been verified.</summary>
-        private static bool isverified = false;
+        private static bool _isverified = false;
 
         /// <summary>After verification, indicates whether the Azure Storage Emulator is available.</summary>
-        private static bool isavailable = false;
+        private static bool _isavailable = false;
 
         /// <summary>
         /// Speeds up testing by only running certain tests if the Azure Storage Emulator is started.
@@ -35,12 +38,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
                 return false;
 
-            if (isverified && isavailable)
+            if (_isverified && _isavailable)
                 return true;
 
-            if (!isverified)
+            if (!_isverified)
             {
-                isverified = true;
+                _isverified = true;
 
                 try
                 {
@@ -48,7 +51,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                     {
                     }
 
-                    isavailable = true;
+                    _isavailable = true;
 
                     return true;
                 }
@@ -57,7 +60,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 }
             }
 
-            if (!isavailable)
+            if (!_isavailable)
                 throw new Exception("The Azure Storage Emulator is not available or is not started");
 
             return true;
@@ -66,9 +69,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CanSerializeOrderedBalanceToEntity()
         {
-            uint256 txId = new uint256(RandomUtils.GetBytes(32));
-            Script script = this.CreateScript(512);
-            OrderedBalanceChange balance = new OrderedBalanceChange(txId, script, null, null, 0);
+            var txId = new uint256(RandomUtils.GetBytes(32));
+            var script = this.CreateScript(512);
+            var balance = new OrderedBalanceChange(txId, script, null, null, 0);
             Assert.Equal(script, balance.ScriptPubKey);
             var entity = balance.ToEntity();
             Assert.False(entity.Properties.ContainsKey("h"));
@@ -95,7 +98,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             var bytes =
                 Helper.SerializeList(Enumerable.Range(0, 300000).Select(e => new OrderedBalanceChange.IntCompactVarInt((uint)e)).ToArray());
 
-            DynamicTableEntity entity = new DynamicTableEntity();
+            var entity = new DynamicTableEntity();
             Helper.SetEntityProperty(entity, "a", bytes);
             var actualBytes = Helper.GetEntityProperty(entity, "a");
             Assert.True(actualBytes.SequenceEqual(bytes));
@@ -168,11 +171,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CanSerializeDeserializeTableEntity()
         {
-            DynamicTableEntity entity = new DynamicTableEntity("partition", "row");
+            var entity = new DynamicTableEntity("partition", "row");
             entity.Properties.Add("propertyname", new EntityProperty("propertyvalue"));
             var val = entity.Serialize();
 
-            DynamicTableEntity entity2 = new DynamicTableEntity();
+            var entity2 = new DynamicTableEntity();
             entity2.Deserialize(val);
 
             Assert.Equal("partition", entity2.PartitionKey);
@@ -259,13 +262,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         {
             if (!StartAzureStorageDependentTest()) return;
 
-            BitcoinSecret alice = new BitcoinSecret("KyJTjvFpPF6DDX4fnT56d2eATPfxjdUPXFFUb85psnCdh34iyXRQ");
-            BitcoinSecret bob = new BitcoinSecret("KysJMPCkFP4SLsEQAED9CzCurJBkeVvAa4jeN1BBtYS7P5LocUBQ");
-            BitcoinSecret nico = new BitcoinSecret("L2uC8xNjmcfwje6eweucYvFsmKASbMDALy4rCJBAg8wofpH6barj");
-            BitcoinSecret satoshi = new BitcoinSecret("L1CpAon5d8zroENbkiMbk3dtd3kcbms6QGF5x475KKTMmXVaJXh3");
+            var alice = new BitcoinSecret("KyJTjvFpPF6DDX4fnT56d2eATPfxjdUPXFFUb85psnCdh34iyXRQ");
+            var bob = new BitcoinSecret("KysJMPCkFP4SLsEQAED9CzCurJBkeVvAa4jeN1BBtYS7P5LocUBQ");
+            var nico = new BitcoinSecret("L2uC8xNjmcfwje6eweucYvFsmKASbMDALy4rCJBAg8wofpH6barj");
+            var satoshi = new BitcoinSecret("L1CpAon5d8zroENbkiMbk3dtd3kcbms6QGF5x475KKTMmXVaJXh3");
 
-            BitcoinSecret goldGuy = new BitcoinSecret("KyuzoVnpsqW529yzozkzP629wUDBsPmm4QEkh9iKnvw3Dy5JJiNg");
-            BitcoinSecret silverGuy = new BitcoinSecret("L4KvjpqDtdGEn7Lw6HdDQjbg74MwWRrFZMQTgJozeHAKJw5rQ2Kn");
+            var goldGuy = new BitcoinSecret("KyuzoVnpsqW529yzozkzP629wUDBsPmm4QEkh9iKnvw3Dy5JJiNg");
+            var silverGuy = new BitcoinSecret("L4KvjpqDtdGEn7Lw6HdDQjbg74MwWRrFZMQTgJozeHAKJw5rQ2Kn");
 
             using (var tester = this.CreateTester())
             {
@@ -288,7 +291,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                         }
                     };
 
-                IssuanceCoin[] issuanceCoins = issuanceCoinsTransaction
+                var issuanceCoins = issuanceCoinsTransaction
                                         .Outputs
                                         .Take(2)
                                         .Select((o, i) => new Coin(new OutPoint(issuanceCoinsTransaction.GetHash(), i), o))
@@ -477,7 +480,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CanGeneratePartitionKey()
         {
-            HashSet<string> results = new HashSet<string>();
+            var results = new HashSet<string>();
             while(results.Count != 4096)
             {
                 results.Add(Helper.GetPartitionKey(12, RandomUtils.GetBytes(3), 0, 3));
@@ -823,11 +826,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
             using (var tester = this.CreateTester())
             {
-                Key bob = new BitcoinSecret("L4JinGSmHxKJJrjbeFx3zxf9Vr3VD6jmq5wXpDm6ywUewcWoXEAy").PrivateKey;
+                var bob = new BitcoinSecret("L4JinGSmHxKJJrjbeFx3zxf9Vr3VD6jmq5wXpDm6ywUewcWoXEAy").PrivateKey;
                 var chainBuilder = tester.CreateChainBuilder();
                 chainBuilder.NoRandom = true;
 
-                Dictionary<string, Transaction> txs = new Dictionary<string, Transaction>();
+                var txs = new Dictionary<string, Transaction>();
                 txs.Add("tx1", chainBuilder.EmitMoney(bob, "1.0"));
                 chainBuilder.SubmitBlock();
 
@@ -845,11 +848,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 txs.Add("tx43", chainBuilder.EmitMoney(bob, "4.1"));
                 chainBuilder.SubmitBlock();
 
-                txs.Add("utx51", chainBuilder.EmitMoney(bob, "5.1", isCoinbase: false, indexBalance: true));
+                txs.Add("utx51", chainBuilder.EmitMoney(bob, "5.1", false, true));
                 Thread.Sleep(1000);
-                txs.Add("utx52", chainBuilder.EmitMoney(bob, "5.2", isCoinbase: false, indexBalance: true));
+                txs.Add("utx52", chainBuilder.EmitMoney(bob, "5.2", false, true));
                 Thread.Sleep(1000);
-                txs.Add("utx53", chainBuilder.EmitMoney(bob, "5.3", isCoinbase: false, indexBalance: true));
+                txs.Add("utx53", chainBuilder.EmitMoney(bob, "5.3", false, true));
 
                 chainBuilder.SyncIndexer();
 
@@ -872,7 +875,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 foreach(var test in tests)
                 {
                     var data = test;
-                    BalanceQuery query = new BalanceQuery();
+                    var query = new BalanceQuery();
                     query.From = this.Parse(data[0], all, txs);
                     query.FromIncluded = this.ParseIncl(data[0]);
                     query.To = this.Parse(data[1], all, txs);
@@ -1018,11 +1021,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CanFastEncode()
         {
-            byte[] bytes = new byte[] { 0xFF, 1, 2, 3, 0 };
+            var bytes = new byte[] { 0xFF, 1, 2, 3, 0 };
             var str = FastEncoder.Instance.EncodeData(bytes);
-            byte[] actual = FastEncoder.Instance.DecodeData(str);
+            var actual = FastEncoder.Instance.DecodeData(str);
             Assert.True(bytes.SequenceEqual(actual));
-            for(int i = 0; i < 1000; i++)
+            for(var i = 0; i < 1000; i++)
             {
                 bytes = RandomUtils.GetBytes(100);
                 str = FastEncoder.Instance.EncodeData(bytes);
@@ -1035,9 +1038,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CustomThreadPoolTaskWorks()
         {
-            TaskCompletionSource<int> completion = new TaskCompletionSource<int>();
+            var completion = new TaskCompletionSource<int>();
             var scheduler = new CustomThreadPoolTaskScheduler(10, 20);
-            for(int i = 0; i < 30; i++)
+            for(var i = 0; i < 30; i++)
             {
                 new Task(() => Task.WaitAll(completion.Task)).Start(scheduler);
             }
@@ -1069,8 +1072,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             using (var tester = this.CreateTester())
             {
                 var builder = tester.CreateChainBuilder();
-                Transaction tx = new Transaction();
-                for(int i = 0; i < 4; i++)
+                var tx = new Transaction();
+                for(var i = 0; i < 4; i++)
                     tx.AddOutput(new TxOut(Money.Zero, new Script(new byte[500 * 1024])));
                 tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
 
@@ -1078,9 +1081,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 Assert.NotNull(indexed);
                 Assert.True(tx.GetHash() == indexed.Transaction.GetHash());
 
-                Transaction tx2 = new Transaction();
+                var tx2 = new Transaction();
                 var txhash = tx.GetHash();
-                for(int i = 0; i < 4; i++)
+                for(var i = 0; i < 4; i++)
                     tx2.Inputs.Add(new TxIn(new OutPoint(txhash, i)));
                 tx2.AddOutput(new TxOut(Money.Zero, new Script(RandomUtils.GetBytes(500 * 1024))));
                 tester.Indexer.Index(new TransactionEntry.Entity(null, tx2, null));
@@ -1114,7 +1117,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             {
                 var bob = new Key();
                 var alice = new Key();
-                BalanceId bobId = new BalanceId(bob);
+                var bobId = new BalanceId(bob);
                 NonStandardScriptPubKeyDoesNotReturnsWrongBalanceCore(tester, bob, alice, bobId);
 
                 bob = new Key();
@@ -1136,7 +1139,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 });
                 var chainBuilder = tester.CreateChainBuilder();
 
-                List<Coin> bobCoins = new List<Coin>();
+                var bobCoins = new List<Coin>();
 
                 bobCoins.AddRange(chainBuilder.EmitMoney(bob, "50.0").Outputs.AsCoins());
                 bobCoins.AddRange(chainBuilder.EmitMoney(bob, "5.0").Outputs.AsCoins());
@@ -1177,7 +1180,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 chainBuilder.SubmitBlock();
                 chainBuilder.SyncIndexer();
 
-                for(int i = 0; i < 2; i++)
+                for(var i = 0; i < 2; i++)
                 {
                     bobBalance = tester.Client.GetOrderedBalance(bobId).ToArray();
                     Assert.True(bobBalance.Length == 4); //OP_NOP spending should not appear
@@ -1235,7 +1238,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             chainBuilder.SubmitBlock();
             chainBuilder.SyncIndexer();
 
-            for(int i = 0; i < 2; i++)
+            for(var i = 0; i < 2; i++)
             {
                 bobBalance = tester.Client.GetOrderedBalance(bobId).ToArray();
                 Assert.True(bobBalance.Length < 2); //OP_NOP spending should not appear
@@ -1243,7 +1246,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         }
 
         [Fact]
-        public void CanGetOrderedBalancesP2WPKH()
+        public void CanGetOrderedBalancesP2Wpkh()
         {
             if (!StartAzureStorageDependentTest()) return;
 
@@ -1286,7 +1289,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         }
 
         [Fact]
-        public void CanGetOrderedBalancesP2WSH()
+        public void CanGetOrderedBalancesP2Wsh()
         {
             if (!StartAzureStorageDependentTest()) return;
 
@@ -1381,7 +1384,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 bobBalance = tester.Client.GetOrderedBalance(bob).ToArray();
                 Assert.True(bobBalance[0].Amount == -Money.Parse("5.0"));
 
-                for(int i = 0; i < 2; i++)
+                for(var i = 0; i < 2; i++)
                 {
 
                     aliceBalance = tester.Client.GetOrderedBalance(alice).ToArray();
@@ -1528,26 +1531,26 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
     {
         private class TestCase
         {
-            public string test { get; set; }
-            public string testedtx { get; set; }
-            public string[] txs { get; set; }
+            public string Test { get; set; }
+            public string Testedtx { get; set; }
+            public string[] Txs { get; set; }
         }
 
         public ColoredCoinTester([CallerMemberName]string test = null)
         {
             var testcase = JsonConvert.DeserializeObject<TestCase[]>(File.ReadAllText("../../../Data/openasset-known-tx.json"))
-                .First(t => t.test == test);
+                .First(t => t.Test == test);
 
-            NoSqlTransactionRepository repository = new NoSqlTransactionRepository();
+            var repository = new NoSqlTransactionRepository();
 
-            foreach(var tx in testcase.txs)
+            foreach(var tx in testcase.Txs)
             {
                 var txObj = Transaction.Parse(tx);
                 this.Transactions.Add(txObj);
                 repository.Put(txObj.GetHash(), txObj);
             }
 
-            this.TestedTxId = uint256.Parse(testcase.testedtx);
+            this.TestedTxId = uint256.Parse(testcase.Testedtx);
             this.Repository = new NoSqlColoredTransactionRepository(repository, new InMemoryNoSqlRepository());
         }
 
@@ -1565,7 +1568,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
         public string AutoDownloadMissingTransaction(Action act)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             while(true)
             {
                 try
@@ -1575,12 +1578,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 }
                 catch(TransactionNotFoundException ex)
                 {
-                    WebClient client = new WebClient();
-                    var result = client.DownloadString("http://btc.blockr.io/api/v1/tx/raw/" + ex.TxId);
+                    var client = new WebClient();
+                    var result = client.DownloadString($"http://btc.blockr.io/api/v1/tx/raw/{ex.TxId}");
                     var json = JObject.Parse(result);
                     var tx = Transaction.Parse(json["data"]["tx"]["hex"].ToString());
 
-                    builder.AppendLine("\"" + json["data"]["tx"]["hex"].ToString() + "\",\r\n");
+                    builder.AppendLine($"\"{json["data"]["tx"]["hex"]}\",\r\n");
                     this.Repository.Transactions.Put(tx.GetHash(), tx);
                 }
             }

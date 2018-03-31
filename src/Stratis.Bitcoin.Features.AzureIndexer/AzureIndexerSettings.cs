@@ -36,7 +36,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public string StorageNamespace { get; set; }
 
         /// <summary>The callback used to modify settings on startup.</summary>
-        private Action<AzureIndexerSettings> callback = null;
+        private readonly Action<AzureIndexerSettings> _callback = null;
 
         /// <summary>
         /// Initializes an instance of the object.
@@ -57,7 +57,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <param name="callback">A callback for modifying the settings during startup.</param>
         public AzureIndexerSettings(Action<AzureIndexerSettings> callback) : this()
         {
-            this.callback = callback;
+            this._callback = callback;
         }
 
         /// <summary>
@@ -71,8 +71,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             if (!this.AzureEmulatorUsed)
             {
                 this.AzureConnectionString = config.GetOrDefault<string>("azureconnectionstring", string.Empty);
-                // Mime-encoded-data strings should always be a multiple of 4 in length. Provide trailing '='s if omitted..
-                // this.AzureKey = (this.AzureKey + "===").Substring(0, AzureKey.Length + 3 - ((this.AzureKey.Length + 3) % 4));
             }
             this.CheckpointInterval = TimeSpan.Parse(config.GetOrDefault<string>("chkptint", "00:15:00"));
             this.IgnoreCheckpoints = config.GetOrDefault<bool>("nochkpts", false);
@@ -93,7 +91,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this.LoadSettingsFromConfig(nodeSettings);
 
             // Invoke callback
-            this.callback?.Invoke(this);
+            this._callback?.Invoke(this);
         }
 
         /// <summary>
@@ -105,15 +103,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             var defaults = NodeSettings.Default();
             var builder = new StringBuilder();
 
-            builder.AppendLine($"-azureacc=<string>        Azure account name.");
-            builder.AppendLine($"-azurekey=<string>        Azure account key.");
-            builder.AppendLine($"-azemu                    Azure storage emulator used. Default is not to use the emulator.");
-            builder.AppendLine($"-chkptint=<hh:mm:ss>      Indexing checkpoint interval.");
-            builder.AppendLine($"-nochkpts                 Do not use checkpoints. Default is to use checkpoints.");
-            builder.AppendLine($"-indexfrom=<int (0 to N)> Block height to start indexing from.");
-            builder.AppendLine($"-indexto=<int (0 to N)>   Maximum block height to index.");
-            builder.AppendLine($"-chkptset=<string>        Checkpointset name. Default is 'default'.");
-            builder.AppendLine($"-indexprefix=<string>     Name prefix for index tables and blob container.");
+            builder.AppendLine($"-azureconnectionstring=<string>        Azure connection string.");
+            builder.AppendLine($"-azemu                                 Azure storage emulator used. Default is not to use the emulator.");
+            builder.AppendLine($"-chkptint=<hh:mm:ss>                   Indexing checkpoint interval.");
+            builder.AppendLine($"-nochkpts                              Do not use checkpoints. Default is to use checkpoints.");
+            builder.AppendLine($"-indexfrom=<int (0 to N)>              Block height to start indexing from.");
+            builder.AppendLine($"-indexto=<int (0 to N)>                Maximum block height to index.");
+            builder.AppendLine($"-chkptset=<string>                     Checkpointset name. Default is 'default'.");
+            builder.AppendLine($"-indexprefix=<string>                  Name prefix for index tables and blob container.");
 
             defaults.Logger.LogInformation(builder.ToString());
         }

@@ -2,7 +2,7 @@
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 {
-	class TestUtils
+    internal class TestUtils
 	{
 		internal static void EnsureNew(string folderName)
 		{

@@ -20,16 +20,16 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
     public class AzureIndexerFeature : FullNodeFeature, INodeStats
     {
         /// <summary>The loop responsible for indexing blocks to azure.</summary>
-        protected readonly AzureIndexerLoop indexerLoop;
+        protected readonly AzureIndexerLoop IndexerLoop;
 
         /// <summary>The node's settings.</summary>
-        protected readonly NodeSettings nodeSettings;
+        protected readonly NodeSettings NodeSettings;
 
         /// <summary>The Azure Indexer settings.</summary>
-        protected readonly AzureIndexerSettings indexerSettings;
+        protected readonly AzureIndexerSettings IndexerSettings;
 
         /// <summary>Instance logger.</summary>
-        private readonly ILogger logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Constructs the Azure Indexer feature.
@@ -44,10 +44,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             ILoggerFactory loggerFactory,
             AzureIndexerSettings indexerSettings)
         {
-            this.indexerLoop = azureIndexerLoop;
-            this.logger = loggerFactory.CreateLogger(this.GetType().FullName);
-            this.nodeSettings = nodeSettings;
-            this.indexerSettings = indexerSettings;
+            this.IndexerLoop = azureIndexerLoop;
+            this._logger = loggerFactory.CreateLogger(this.GetType().FullName);
+            this.NodeSettings = nodeSettings;
+            this.IndexerSettings = indexerSettings;
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <param name="benchLogs">The sring builder to add the statistics to.</param>
         public void AddNodeStats(StringBuilder benchLogs)
         {
-            var highestBlock = this.indexerLoop.StoreTip;
+            var highestBlock = this.IndexerLoop.StoreTip;
 
             if (highestBlock == null)
                 return;
@@ -72,14 +72,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// </summary>
         public override void Initialize()
         {
-            this.logger.LogTrace("()");
-            this.indexerLoop.Initialize();
-            this.logger.LogTrace("(-)");
+            this._logger.LogTrace("()");
+            this.IndexerLoop.Initialize();
+            this._logger.LogTrace("(-)");
         }
 
         public override void LoadConfiguration()
         {
-            this.indexerSettings.Load(this.nodeSettings);
+            this.IndexerSettings.Load(this.NodeSettings);
         }
 
         public static void PrintHelp(Network network)
@@ -92,16 +92,16 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// </summary>
         public override void Dispose()
         {
-            this.logger.LogInformation("Stopping Indexer...");
-            this.indexerLoop.Shutdown();
-            this.logger.LogTrace("(-)");
+            this._logger.LogInformation("Stopping Indexer...");
+            this.IndexerLoop.Shutdown();
+            this._logger.LogTrace("(-)");
         }
     }
 
     /// <summary>
     /// A class providing extension methods for <see cref="IFullNodeBuilder"/>.
     /// </summary>
-    public static partial class IFullNodeBuilderExtensions
+    public static partial class FullNodeBuilderExtensions
     {
         public static IFullNodeBuilder UseAzureIndexer(this IFullNodeBuilder fullNodeBuilder, Action<AzureIndexerSettings> setup = null)
         {

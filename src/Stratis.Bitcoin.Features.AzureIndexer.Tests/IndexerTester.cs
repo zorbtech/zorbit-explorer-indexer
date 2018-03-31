@@ -6,28 +6,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NBitcoin;
+using Stratis.Bitcoin.Features.AzureIndexer.Chain;
+using Stratis.Bitcoin.Features.AzureIndexer.Indexing;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 {
     public class IndexerTester : IDisposable
     {
-        private readonly AzureIndexer _Importer;
-        public AzureIndexer Indexer
+        private readonly AzureIndexer _importer;
+
+        private IndexerClient _client;
+
+        private readonly uint256 KnownBlockId = uint256.Parse("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943");
+        private readonly uint256 UnknownBlockId = uint256.Parse("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4942");
+        private readonly uint256 KnownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
+        private readonly uint256 UnknownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33c");
+
+        public static IndexerConfiguration CreateConfiguration()
         {
-            get
-            {
-                return _Importer;
-            }
+            var confBuilder = new ConfigurationBuilder();
+            var config = new IndexerConfiguration(confBuilder.Build());
+            return config;
         }
 
-		public static IndexerConfiguration CreateConfiguration()
-		{
-			var confBuilder = new ConfigurationBuilder();
-			var config = new IndexerConfiguration(confBuilder.Build());
-			return config;
-		}
-
-        string _Folder;
         public IndexerTester(string folder)
         {
             TestUtils.EnsureNew(folder);
@@ -37,18 +38,16 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
             config.EnsureSetup();
 
-            _Importer = config.CreateIndexer();
+            _importer = config.CreateIndexer();
 
-			List<Task> creating = new List<Task>();
+            var creating = new List<Task>();
             foreach (var table in config.EnumerateTables())
             {
-				creating.Add(table.CreateIfNotExistsAsync());
+                creating.Add(table.CreateIfNotExistsAsync());
             }
 
-			creating.Add(config.GetBlocksContainer().CreateIfNotExistsAsync());
-			Task.WaitAll(creating.ToArray());
-
-            _Folder = folder;
+            creating.Add(config.GetBlocksContainer().CreateIfNotExistsAsync());
+            Task.WaitAll(creating.ToArray());
         }
 
 
@@ -63,16 +62,16 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             */
             if (!Cached)
             {
-                foreach (var table in _Importer.Configuration.EnumerateTables())
+                foreach (var table in _importer.Configuration.EnumerateTables())
                 {
-					table.CreateIfNotExistsAsync().GetAwaiter().GetResult();
+                    table.CreateIfNotExistsAsync().GetAwaiter().GetResult();
                     var entities = table.ExecuteQuery(new TableQuery()).ToList();
                     Parallel.ForEach(entities, e =>
                     {
                         table.ExecuteAsync(TableOperation.Delete(e)).GetAwaiter().GetResult();
                     });
                 }
-                var container = _Importer.Configuration.GetBlocksContainer();
+                var container = _importer.Configuration.GetBlocksContainer();
                 var blobs = container.ListBlobsAsync("", true, BlobListingDetails.None).GetAwaiter().GetResult().ToList();
 
                 Parallel.ForEach(blobs, b =>
@@ -84,20 +83,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 });
             }
         }
-
-
+        
         #endregion
 
-        public bool Cached
-        {
-            get;
-            set;
-        }
-
-
-        public uint256 KnownBlockId = uint256.Parse("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943");
-        public uint256 UnknownBlockId = uint256.Parse("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4942");
-        
         // TODO: Fix IndexBlocks and this code
         /*
         internal void ImportCachedBlocks()
@@ -122,21 +110,20 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             }
         }
         */
-        public IndexerClient _Client;
-        public uint256 KnownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
-        public uint256 UnknownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33c");
+
         public IndexerClient Client
         {
             get
             {
-                if (_Client == null)
+                if (_client == null)
                 {
-                    _Client = Indexer.Configuration.CreateIndexerClient();
-                    _Client.BalancePartitionSize = 1;
+                    _client = Indexer.Configuration.CreateIndexerClient();
+                    _client.BalancePartitionSize = 1;
                 }
-                return _Client;
+                return _client;
             }
         }
+
         // TODO: Find a NodeServer replacement and fix this code
         /*
         NodeServer _NodeServer;
@@ -149,9 +136,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             return new MiniNode(this, nodeServer);
         }
         */
+
         internal ChainBuilder CreateChainBuilder()
         {
             return new ChainBuilder(this);
         }
+
+        public bool Cached { get; set; }
+
+        public AzureIndexer Indexer => _importer;
     }
 }
