@@ -159,21 +159,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         {
             if (this._indexerSettings.ResetStorage)
             {
-                this._logger.LogInformation("Clearing Azure Storage");
+                this._logger.LogInformation("Resetting Azure Storage");
                 indexer.Configuration.Teardown();
-                this._logger.LogInformation("Azure Storage Cleared");
-            }
-
-            if (this._indexerSettings.ResetStorage)
-            {
-                this._logger.LogInformation("Validating Azure Storage");
             }
 
             indexer.Configuration.EnsureSetup();
 
             if (this._indexerSettings.ResetStorage)
             {
-                this._logger.LogInformation("Azure Storage Validated");
+                this._logger.LogInformation("Azure Storage Reset");
             }
         }
 
