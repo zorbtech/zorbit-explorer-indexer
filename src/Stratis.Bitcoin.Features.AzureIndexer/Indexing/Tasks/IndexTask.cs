@@ -21,7 +21,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 
     public abstract class IndexTask<TIndexed> : IIndexTask
     {
-
         private readonly ExponentialBackoff _retry = new ExponentialBackoff(15, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromMilliseconds(200));
@@ -52,7 +51,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                 {
                     try
                     {
-
                         foreach (var block in blockFetcher)
                         {
                             ThrowIfException();

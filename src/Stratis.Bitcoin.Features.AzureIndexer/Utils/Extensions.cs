@@ -44,7 +44,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     if (e.RequestInformation.HttpStatusCode == 409 &&
                         e.RequestInformation.ExtendedErrorInformation.ErrorCode.Equals(TableErrorCodeStrings.TableBeingDeleted))
                     {
-                        await Task.Delay(1000, cancellationToken);
+                        await Task.Delay(5000, cancellationToken);
                     }
                     else
                     {
@@ -70,7 +70,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     if (e.RequestInformation.HttpStatusCode == 409 &&
                         e.RequestInformation.ExtendedErrorInformation.ErrorCode.Equals(BlobErrorCodeStrings.ContainerBeingDeleted))
                     {
-                        await Task.Delay(1000, cancellationToken);
+                        await Task.Delay(5000, cancellationToken);
                     }
                     else
                     {

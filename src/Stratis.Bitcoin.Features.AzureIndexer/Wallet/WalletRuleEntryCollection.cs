@@ -61,8 +61,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Wallet
         {
             return _entriesByWalletLookup[walletName];
         }
-
-
+        
         public IEnumerable<WalletRuleEntry> GetRulesFor(IDestination destination)
         {
             return GetRulesFor(destination.ScriptPubKey);

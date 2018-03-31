@@ -276,14 +276,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     var fromHeight = this.StoreTip.Height + 1;
                     var toHeight = Math.Min(this.StoreTip.Height + IndexBatchSize, this._indexerSettings.To);
 
-                    var tasks = new List<Task>
-                    {
-                        IndexBlocksAsync(fromHeight, toHeight, cancellationToken),
-                        IndexTransactionsAsync(fromHeight, toHeight, cancellationToken),
-                        IndexBalancesAsync(fromHeight, toHeight, cancellationToken),
-                        IndexWalletsAsync(fromHeight, toHeight, cancellationToken),
-                    };
-                    Task.WaitAll(tasks.ToArray());
+                    await IndexBlocksAsync(fromHeight, toHeight, cancellationToken);
+                    await IndexTransactionsAsync(fromHeight, toHeight, cancellationToken);
+                    await IndexBalancesAsync(fromHeight, toHeight, cancellationToken);
+                    await IndexWalletsAsync(fromHeight, toHeight, cancellationToken);
 
                     // Update the StoreTip value from the minHeight
                     var minHeight = this.BlocksFetcher.LastProcessed.Height;

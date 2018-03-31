@@ -101,8 +101,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 
                 try
                 {
-                    blob.
-                        UploadFromByteArrayAsync(blockBytes, 0, blockBytes.Length, new AccessCondition()
+                    blob.UploadFromByteArrayAsync(blockBytes, 0, blockBytes.Length, new AccessCondition()
                         {
                             //Will throw if already exist, save 1 call
                             IfNotModifiedSinceTime = DateTimeOffset.MinValue

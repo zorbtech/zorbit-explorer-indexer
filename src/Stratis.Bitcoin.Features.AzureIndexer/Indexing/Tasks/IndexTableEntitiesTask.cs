@@ -23,7 +23,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         {
             _table = table;
         }
-        
+
         public void Index(IEnumerable<ITableEntity> entities, TaskScheduler taskScheduler)
         {
             try
@@ -118,12 +118,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                     var watch = new Stopwatch();
                     watch.Start();
                     if (batch.Count > 1)
-                        table.ExecuteBatchAsync(batch, options, context).GetAwaiter().GetResult();
-                    else
                     {
-                        if (batch.Count == 1)
-                            table.ExecuteAsync(batch[0], options, context).GetAwaiter().GetResult();
+                        table.ExecuteBatchAsync(batch, options, context).GetAwaiter().GetResult();
                     }
+                    else if (batch.Count == 1)
+                    {
+                        table.ExecuteAsync(batch[0], options, context).GetAwaiter().GetResult();
+                    }
+
                     Interlocked.Add(ref _indexedEntities, batch.Count);
                 }
                 catch (Exception ex)
@@ -203,7 +205,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                 op.Add(operation);
             return op;
         }
-        
+
         protected override int PartitionSize => 100;
 
         public int IndexedEntities => _indexedEntities;

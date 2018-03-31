@@ -246,10 +246,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
             private readonly MultiValueDictionary<TKey, TValue> _multiValueDictionary;
             private readonly int _version;
-            private KeyValuePair<TKey, IReadOnlyCollection<TValue>> _current;
             private Dictionary<TKey, InnerCollectionView>.Enumerator _enumerator;
             private EnumerationState _state;
-            public KeyValuePair<TKey, IReadOnlyCollection<TValue>> Current => _current;
+
+            public KeyValuePair<TKey, IReadOnlyCollection<TValue>> Current { get; private set; }
 
             object IEnumerator.Current
             {
@@ -262,7 +262,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                         case EnumerationState.AfterLast:
                             throw new InvalidOperationException(Sr.GetString(Exceptions.EnumeratorAfterCurrent));
                     }
-                    return _current;
+                    return Current;
                 }
             }
 
@@ -274,7 +274,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             {
                 _multiValueDictionary = multiValueDictionary;
                 _version = multiValueDictionary._version;
-                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                Current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
                 _enumerator = multiValueDictionary._dictionary.GetEnumerator();
                 _state = EnumerationState.BeforeFirst;
             }
@@ -297,11 +297,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     var keyValuePair = _enumerator.Current;
                     var arg570 = keyValuePair.Key;
                     var keyValuePair2 = _enumerator.Current;
-                    _current = new KeyValuePair<TKey, IReadOnlyCollection<TValue>>(arg570, keyValuePair2.Value);
+                    Current = new KeyValuePair<TKey, IReadOnlyCollection<TValue>>(arg570, keyValuePair2.Value);
                     _state = EnumerationState.During;
                     return true;
                 }
-                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                Current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
                 _state = EnumerationState.AfterLast;
                 return false;
             }
@@ -318,7 +318,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 }
                 _enumerator.Dispose();
                 _enumerator = _multiValueDictionary._dictionary.GetEnumerator();
-                _current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
+                Current = default(KeyValuePair<TKey, IReadOnlyCollection<TValue>>);
                 _state = EnumerationState.BeforeFirst;
             }
 
