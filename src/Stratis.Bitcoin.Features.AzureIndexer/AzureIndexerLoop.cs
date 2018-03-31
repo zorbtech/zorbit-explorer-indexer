@@ -2,6 +2,7 @@
 using NBitcoin;
 using Stratis.Bitcoin.Utilities;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Stratis.Bitcoin.Features.AzureIndexer.Chain;
@@ -281,53 +282,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                     var fromHeight = this.StoreTip.Height + 1;
                     var toHeight = Math.Min(this.StoreTip.Height + IndexBatchSize, this._indexerSettings.To);
 
-                    // Index a batch of blocks
-                    if (!cancellationToken.IsCancellationRequested && toHeight > this.BlocksFetcher.LastProcessed.Height)
+                    var tasks = new List<Task>
                     {
-                        this.BlocksFetcher.FromHeight = Math.Max(this.BlocksFetcher.LastProcessed.Height + 1, fromHeight);
-                        this.BlocksFetcher.ToHeight = toHeight;
-                        var task = new IndexBlocksTask(this.IndexerConfig)
-                        {
-                            SaveProgression = !this._indexerSettings.IgnoreCheckpoints
-                        };
-                        task.Index(this.BlocksFetcher, this.AzureIndexer.TaskScheduler);
-                    }
-
-                    // Index a batch of transactions
-                    if (!cancellationToken.IsCancellationRequested && toHeight > this.TransactionsFetcher.LastProcessed.Height)
-                    {
-                        this.TransactionsFetcher.FromHeight = Math.Max(this.TransactionsFetcher.LastProcessed.Height + 1, fromHeight);
-                        this.TransactionsFetcher.ToHeight = toHeight;
-                        var task = new IndexTransactionsTask(this.IndexerConfig)
-                        {
-                            SaveProgression = !this._indexerSettings.IgnoreCheckpoints
-                        };
-                        task.Index(this.TransactionsFetcher, this.AzureIndexer.TaskScheduler);
-                    }
-
-                    // Index a batch of balances
-                    if (!cancellationToken.IsCancellationRequested && toHeight > this.BalancesFetcher.LastProcessed.Height)
-                    {
-                        this.BalancesFetcher.FromHeight = Math.Max(this.BalancesFetcher.LastProcessed.Height + 1, fromHeight);
-                        this.BalancesFetcher.ToHeight = toHeight;
-                        var task = new IndexBalanceTask(this.IndexerConfig, null)
-                        {
-                            SaveProgression = !this._indexerSettings.IgnoreCheckpoints
-                        };
-                        task.Index(this.BalancesFetcher, this.AzureIndexer.TaskScheduler);
-                    }
-
-                    // Index a batch of wallets
-                    if (!cancellationToken.IsCancellationRequested && toHeight > this.WalletsFetcher.LastProcessed.Height)
-                    {
-                        this.WalletsFetcher.FromHeight = Math.Max(this.WalletsFetcher.LastProcessed.Height + 1, fromHeight);
-                        this.WalletsFetcher.ToHeight = toHeight;
-                        var task = new IndexBalanceTask(this.IndexerConfig, this.IndexerConfig.CreateIndexerClient().GetAllWalletRules())
-                        {
-                            SaveProgression = !this._indexerSettings.IgnoreCheckpoints
-                        };
-                        task.Index(this.WalletsFetcher, this.AzureIndexer.TaskScheduler);
-                    }
+                        IndexBlocksAsync(fromHeight, toHeight, cancellationToken),
+                        IndexTransactionsAsync(fromHeight, toHeight, cancellationToken),
+                        IndexBalancesAsync(fromHeight, toHeight, cancellationToken),
+                        IndexWalletsAsync(fromHeight, toHeight, cancellationToken),
+                    };
+                    Task.WaitAll(tasks.ToArray());
 
                     // Update the StoreTip value from the minHeight
                     var minHeight = this.BlocksFetcher.LastProcessed.Height;
@@ -358,12 +320,88 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// Sets the StoreTip.
         /// </summary>
         /// <param name="chainedBlock">The block to set the store tip to.</param>
-        internal void SetStoreTip(ChainedBlock chainedBlock)
+        private void SetStoreTip(ChainedBlock chainedBlock)
         {
             this._logger.LogTrace("({0}:'{1}')", nameof(chainedBlock), chainedBlock?.HashBlock);
             Guard.NotNull(chainedBlock, nameof(chainedBlock));
             this.StoreTip = chainedBlock;
             this._logger.LogTrace("(-)");
+        }
+
+        private Task IndexBlocksAsync(int fromHeight, int toHeight, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested || toHeight <= this.BlocksFetcher.LastProcessed.Height)
+            {
+                return Task.CompletedTask;
+            }
+
+            return Task.Run(() =>
+            {
+                this.BlocksFetcher.FromHeight = Math.Max(this.BlocksFetcher.LastProcessed.Height + 1, fromHeight);
+                this.BlocksFetcher.ToHeight = toHeight;
+                var task = new IndexBlocksTask(this.IndexerConfig)
+                {
+                    SaveProgression = !this._indexerSettings.IgnoreCheckpoints
+                };
+                task.Index(this.BlocksFetcher, this.AzureIndexer.TaskScheduler);
+            }, cancellationToken);
+        }
+
+        private Task IndexTransactionsAsync(int fromHeight, int toHeight, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested || toHeight <= this.TransactionsFetcher.LastProcessed.Height)
+            {
+                return Task.CompletedTask;
+            }
+
+            return Task.Run(() =>
+            {
+                this.TransactionsFetcher.FromHeight = Math.Max(this.TransactionsFetcher.LastProcessed.Height + 1, fromHeight);
+                this.TransactionsFetcher.ToHeight = toHeight;
+                var task = new IndexTransactionsTask(this.IndexerConfig)
+                {
+                    SaveProgression = !this._indexerSettings.IgnoreCheckpoints
+                };
+                task.Index(this.TransactionsFetcher, this.AzureIndexer.TaskScheduler);
+            }, cancellationToken);
+        }
+
+        private Task IndexBalancesAsync(int fromHeight, int toHeight, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested || toHeight <= this.BalancesFetcher.LastProcessed.Height)
+            {
+                return Task.CompletedTask;
+            }
+
+            return Task.Run(() =>
+            {
+                this.BalancesFetcher.FromHeight = Math.Max(this.BalancesFetcher.LastProcessed.Height + 1, fromHeight);
+                this.BalancesFetcher.ToHeight = toHeight;
+                var task = new IndexBalanceTask(this.IndexerConfig, null)
+                {
+                    SaveProgression = !this._indexerSettings.IgnoreCheckpoints
+                };
+                task.Index(this.BalancesFetcher, this.AzureIndexer.TaskScheduler);
+            }, cancellationToken);
+        }
+
+        private Task IndexWalletsAsync(int fromHeight, int toHeight, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested || toHeight <= this.WalletsFetcher.LastProcessed.Height)
+            {
+                return Task.CompletedTask;
+            }
+
+            return Task.Run(() =>
+            {
+                this.WalletsFetcher.FromHeight = Math.Max(this.WalletsFetcher.LastProcessed.Height + 1, fromHeight);
+                this.WalletsFetcher.ToHeight = toHeight;
+                var task = new IndexBalanceTask(this.IndexerConfig, this.IndexerConfig.CreateIndexerClient().GetAllWalletRules())
+                {
+                    SaveProgression = !this._indexerSettings.IgnoreCheckpoints
+                };
+                task.Index(this.WalletsFetcher, this.AzureIndexer.TaskScheduler);
+            }, cancellationToken);
         }
     }
 }
