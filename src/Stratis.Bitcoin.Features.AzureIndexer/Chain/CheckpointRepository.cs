@@ -75,9 +75,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
         {
             var isLocal = !checkpointName.Contains('/');
             if (isLocal)
+            {
                 return GetSetPart() + checkpointName;
+            }
+
             if (checkpointName.StartsWith("/"))
+            {
                 checkpointName = checkpointName.Substring(1);
+            }
+
             return checkpointName;
         }
 

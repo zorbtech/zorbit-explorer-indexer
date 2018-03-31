@@ -25,6 +25,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         private readonly ExponentialBackoff _retry = new ExponentialBackoff(15, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromMilliseconds(200));
+
         private Exception _taskException;
 
         protected IndexTask(IndexerConfiguration configuration)
@@ -40,8 +41,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             try
             {
                 SetThrottling();
+
                 if (EnsureIsSetup)
+                {
                     EnsureSetup().Wait();
+                }
 
                 var bulk = new BulkImport<TIndexed>(PartitionSize);
                 if (!SkipToEnd)
@@ -52,6 +56,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                         foreach (var block in blockFetcher)
                         {
                             ThrowIfException();
+
                             if (blockFetcher.NeedSave)
                             {
                                 if (SaveProgression)
@@ -60,12 +65,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                                     Save(tasks, blockFetcher, bulk);
                                 }
                             }
+
                             ProcessBlock(block, bulk);
+
                             if (bulk.HasFullPartition)
                             {
                                 EnqueueTasks(tasks, bulk, false, scheduler);
                             }
                         }
+
                         EnqueueTasks(tasks, bulk, true, scheduler);
                     }
                     catch (OperationCanceledException ex)
@@ -75,9 +83,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                     }
                 }
                 else
+                {
                     blockFetcher.SkipToEnd();
+                }
+
                 if (SaveProgression)
+                {
                     Save(tasks, blockFetcher, bulk);
+                }
+
                 WaitFinished(tasks);
                 ThrowIfException();
             }
@@ -156,14 +170,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             }
         }
 
-        public IndexerConfiguration Configuration { get; }
-
-        public bool SaveProgression { get; set; }
-
-        public int MaxQueued { get; set; }
-
-        public bool EnsureIsSetup { get; set; } = true;
-
         protected abstract int PartitionSize { get; }
 
         /// <summary>
@@ -171,6 +177,15 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         /// </summary>
         protected virtual bool SkipToEnd => false;
 
+
         protected TimeSpan Timeout = TimeSpan.FromMinutes(5.0);
+
+        public IndexerConfiguration Configuration { get; }
+
+        public bool SaveProgression { get; set; }
+
+        public int MaxQueued { get; set; }
+
+        public bool EnsureIsSetup { get; set; } = true;
     }
 }

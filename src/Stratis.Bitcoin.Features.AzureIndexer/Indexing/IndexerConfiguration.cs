@@ -49,11 +49,23 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 
         public Task EnsureSetupAsync()
         {
+            this.SetStorageAccount();
             var tasks = EnumerateTables()
-                .Select(t => t.CreateIfNotExistsAsync())
+                .Select(t => t.SafeCreateIfNotExistsAsync())
                 .OfType<Task>()
                 .ToList();
-            tasks.Add(GetBlocksContainer().CreateIfNotExistsAsync());
+            tasks.Add(GetBlocksContainer().SafeCreateIfNotExistsAsync());
+            return Task.WhenAll(tasks.ToArray());
+        }
+
+        public Task TeardownAsync()
+        {
+            this.SetStorageAccount();
+            var tasks = EnumerateTables()
+                .Select(t => t.DeleteIfExistsAsync())
+                .OfType<Task>()
+                .ToList();
+            tasks.Add(GetBlocksContainer().DeleteIfExistsAsync());
             return Task.WhenAll(tasks.ToArray());
         }
 
@@ -61,11 +73,20 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
         {
             try
             {
-                this.StorageAccount = this.AzureStorageEmulatorUsed ?
-                    CloudStorageAccount.Parse("UseDevelopmentStorage=true;") :
-                    CloudStorageAccount.Parse(AzureConnectionString);
-
                 EnsureSetupAsync().Wait();
+            }
+            catch (AggregateException aex)
+            {
+                ExceptionDispatchInfo.Capture(aex).Throw();
+                throw;
+            }
+        }
+
+        public void Teardown()
+        {
+            try
+            {
+                TeardownAsync().Wait();
             }
             catch (AggregateException aex)
             {
@@ -122,11 +143,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             return this.BlobClient.GetContainerReference(this.GetFullName(IndexerBlobContainerName));
         }
 
-        private string GetFullName(string storageObjectName)
-        {
-            return (StorageNamespace + storageObjectName).ToLowerInvariant();
-        }
-
         protected static string GetValue(IConfiguration config, string setting, bool required)
         {
             var result = config[setting];
@@ -134,6 +150,23 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
             if (result == null && required)
                 throw new IndexerConfigurationErrorsException($"AppSetting {setting} not found");
             return result;
+        }
+
+        private string GetFullName(string storageObjectName)
+        {
+            return (StorageNamespace + storageObjectName).ToLowerInvariant();
+        }
+
+        private void SetStorageAccount()
+        {
+            if (StorageAccount != null)
+            {
+                return;
+            }
+
+            this.StorageAccount = this.AzureStorageEmulatorUsed ?
+                CloudStorageAccount.Parse("UseDevelopmentStorage=true;") :
+                CloudStorageAccount.Parse(AzureConnectionString);
         }
 
         public CloudTableClient TableClient

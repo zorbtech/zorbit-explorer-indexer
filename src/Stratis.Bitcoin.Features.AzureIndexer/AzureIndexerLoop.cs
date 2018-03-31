@@ -106,7 +106,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this.IndexerConfig = IndexerConfigFromSettings(this._indexerSettings, this.FullNode.Network);
 
             var indexer = this.IndexerConfig.CreateIndexer();
-            indexer.Configuration.EnsureSetup();
+
+            SetupAzureStorage(indexer);
+
             indexer.TaskScheduler = new CustomThreadPoolTaskScheduler(30, 100);
             indexer.CheckpointInterval = this._indexerSettings.CheckpointInterval;
             indexer.IgnoreCheckpoints = this._indexerSettings.IgnoreCheckpoints;
@@ -144,6 +146,37 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         }
 
         /// <summary>
+        /// Shuts down the indexing loop.
+        /// </summary>
+        public void Shutdown()
+        {
+            this._asyncLoop.Dispose();
+            this._asyncLoopChain.Dispose();
+        }
+
+        private void SetupAzureStorage(AzureIndexer indexer)
+        {
+            if (this._indexerSettings.ResetStorage)
+            {
+                this._logger.LogInformation("Clearing Azure Storage");
+                indexer.Configuration.Teardown();
+                this._logger.LogInformation("Azure Storage Cleared");
+            }
+
+            if (this._indexerSettings.ResetStorage)
+            {
+                this._logger.LogInformation("Validating Azure Storage");
+            }
+
+            indexer.Configuration.EnsureSetup();
+
+            if (this._indexerSettings.ResetStorage)
+            {
+                this._logger.LogInformation("Azure Storage Validated");
+            }
+        }
+
+        /// <summary>
         /// Determines the block that a checkpoint is at.
         /// </summary>
         /// <param name="indexerCheckpoints">The type of checkpoint (wallets, blocks, transactions or balances).</param>
@@ -174,15 +207,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 this._nodeLifetime.ApplicationStopping,
                 TimeSpans.RunOnce,
                 TimeSpans.FiveSeconds);
-        }
-
-        /// <summary>
-        /// Shuts down the indexing loop.
-        /// </summary>
-        public void Shutdown()
-        {
-            this._asyncLoop.Dispose();
-            this._asyncLoopChain.Dispose();
         }
 
         /// <summary>

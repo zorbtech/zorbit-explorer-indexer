@@ -40,7 +40,7 @@ namespace Stratis.IndexerD
             }
             catch (Exception ex)
             {
-                System.Console.WriteLine("There was a problem initializing the node. Details: '{0}'", ex.Message);
+                System.Console.WriteLine($"There was a problem initializing the node. Details: '{ex.Message}'");
             }
         }
     }

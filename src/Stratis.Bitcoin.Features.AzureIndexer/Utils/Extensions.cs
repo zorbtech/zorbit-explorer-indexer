@@ -3,8 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Data.OData;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Blob.Protocol;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Protocol;
 using NBitcoin;
 using NBitcoin.Crypto;
 using Stratis.Bitcoin.Features.AzureIndexer.Balance;
@@ -14,6 +20,68 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 {
     public static class Extensions
     {
+        public static async Task<bool> SafeCreateIfNotExistsAsync(this CloudTable table, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            return await SafeCreateIfNotExistsAsync(table, CancellationToken.None, requestOptions, operationContext);
+        }
+
+        public static async Task<bool> SafeCreateIfNotExistsAsync(this CloudBlobContainer table)
+        {
+            return await SafeCreateIfNotExistsAsync(table, CancellationToken.None);
+        }
+
+        public static async Task<bool> SafeCreateIfNotExistsAsync(this CloudTable table, CancellationToken cancellationToken, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var created = await table.CreateIfNotExistsAsync(requestOptions, operationContext, cancellationToken);
+                    return created;
+                }
+                catch (StorageException e)
+                {
+                    if (e.RequestInformation.HttpStatusCode == 409 &&
+                        e.RequestInformation.ExtendedErrorInformation.ErrorCode.Equals(TableErrorCodeStrings.TableBeingDeleted))
+                    {
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public static async Task<bool> SafeCreateIfNotExistsAsync(this CloudBlobContainer table, CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var created = await table.CreateIfNotExistsAsync();
+                    return created;
+                }
+                catch (StorageException e)
+                {
+                    if (e.RequestInformation.HttpStatusCode == 409 &&
+                        e.RequestInformation.ExtendedErrorInformation.ErrorCode.Equals(BlobErrorCodeStrings.ContainerBeingDeleted))
+                    {
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         public static IEnumerable<T> Distinct<T, TComparer>(this IEnumerable<T> input, Func<T, TComparer> comparer)
         {
             return input.Distinct(new AnonymousEqualityComparer<T, TComparer>(comparer));
@@ -34,22 +102,22 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             var result = new CoinCollection();
             var spentCoins = new Dictionary<OutPoint, ICoin>();
             var receivedCoins = new Dictionary<OutPoint, ICoin>();
-            foreach(var entry in entries)
+            foreach (var entry in entries)
             {
-                if(entry.SpentCoins != null)
+                if (entry.SpentCoins != null)
                 {
-                    foreach(var c in entry.SpentCoins)
+                    foreach (var c in entry.SpentCoins)
                     {
                         spentCoins.AddOrReplace(c.Outpoint, c);
                     }
                 }
-                foreach(var c in entry.ReceivedCoins)
+                foreach (var c in entry.ReceivedCoins)
                 {
                     receivedCoins.AddOrReplace(c.Outpoint, c);
                 }
             }
 
-            if(spent)
+            if (spent)
             {
                 result.AddRange(spentCoins.Values.Select(s => s));
             }
@@ -126,11 +194,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return $"unk{Hashes.Hash256(Encoding.UTF8.GetBytes(entity.PartitionKey + entity.RowKey))}";
         }
 
-		public static byte[] Serialize(this ITableEntity entity)
+        public static byte[] Serialize(this ITableEntity entity)
         {
             using (var ms = new MemoryStream())
             {
-                using(var messageWriter = new ODataMessageWriter(new Message(ms), new ODataMessageWriterSettings()))
+                using (var messageWriter = new ODataMessageWriter(new Message(ms), new ODataMessageWriterSettings()))
                 {
                     // Create an entry writer to write a top-level entry to the message.
                     var entryWriter = messageWriter.CreateODataEntryWriter();
@@ -140,11 +208,11 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-		public static void Deserialize(this ITableEntity entity, byte[] value)
+        public static void Deserialize(this ITableEntity entity, byte[] value)
         {
             using (var ms = new MemoryStream(value))
             {
-                using(var messageReader = new ODataMessageReader(new Message(ms), new ODataMessageReaderSettings()
+                using (var messageReader = new ODataMessageReader(new Message(ms), new ODataMessageReaderSettings()
                 {
                     MessageQuotas = new ODataMessageQuotas()
                     {

@@ -35,6 +35,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <summary>The storage namespace to use.</summary>
         public string StorageNamespace { get; set; }
 
+        /// <summary>Option to reset Azure storage on init.</summary>
+        public bool ResetStorage { get; set; }
+
         /// <summary>The callback used to modify settings on startup.</summary>
         private readonly Action<AzureIndexerSettings> _callback = null;
 
@@ -78,6 +81,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this.To = int.Parse(config.GetOrDefault<string>("indexto", int.MaxValue.ToString()));
             this.CheckpointsetName = config.GetOrDefault<string>("chkptset", "default");
             this.StorageNamespace = config.GetOrDefault<string>("indexprefix", string.Empty);
+            this.ResetStorage = config.GetOrDefault<bool>("resetstorage", false);
         }
 
         /// <summary>
@@ -111,6 +115,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             builder.AppendLine($"-indexto=<int (0 to N)>                Maximum block height to index.");
             builder.AppendLine($"-chkptset=<string>                     Checkpointset name. Default is 'default'.");
             builder.AppendLine($"-indexprefix=<string>                  Name prefix for index tables and blob container.");
+            builder.AppendLine($"-resetsorage                           Reset Azure storage on init.");
 
             defaults.Logger.LogInformation(builder.ToString());
         }

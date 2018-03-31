@@ -120,6 +120,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
 
                 Helper.SetEntityProperty(entity, "c", Helper.SerializeList(PreviousTxOuts));
                 Helper.SetEntityProperty(entity, "d", NBitcoin.Utils.ToBytes((ulong)Timestamp.UtcTicks, true));
+
                 return entity;
             }
 
