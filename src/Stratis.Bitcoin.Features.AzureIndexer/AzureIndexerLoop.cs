@@ -115,6 +115,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             indexer.IgnoreCheckpoints = this._indexerSettings.IgnoreCheckpoints;
             indexer.FromHeight = this._indexerSettings.From;
             indexer.ToHeight = this._indexerSettings.To;
+
+            indexer.BlockHeaderPerRow = 1;
+
             this.AzureIndexer = indexer;
 
             var checkpointBlocks = this.GetCheckPointBlock(IndexerCheckpoints.Blocks);
@@ -306,18 +309,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this._logger.LogTrace("(-)");
         }
 
-        /// <summary>
-        /// Sets the StoreTip.
-        /// </summary>
-        /// <param name="chainedBlock">The block to set the store tip to.</param>
-        private void SetStoreTip(ChainedBlock chainedBlock)
-        {
-            this._logger.LogTrace("({0}:'{1}')", nameof(chainedBlock), chainedBlock?.HashBlock);
-            Guard.NotNull(chainedBlock, nameof(chainedBlock));
-            this.StoreTip = chainedBlock;
-            this._logger.LogTrace("(-)");
-        }
-
         private Task IndexBlocksAsync(int fromHeight, int toHeight, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested || toHeight <= this.BlocksFetcher.LastProcessed.Height)
@@ -392,6 +383,18 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 };
                 task.Index(this.WalletsFetcher, this.AzureIndexer.TaskScheduler);
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Sets the StoreTip.
+        /// </summary>
+        /// <param name="chainedBlock">The block to set the store tip to.</param>
+        private void SetStoreTip(ChainedBlock chainedBlock)
+        {
+            this._logger.LogTrace("({0}:'{1}')", nameof(chainedBlock), chainedBlock?.HashBlock);
+            Guard.NotNull(chainedBlock, nameof(chainedBlock));
+            this.StoreTip = chainedBlock;
+            this._logger.LogTrace("(-)");
         }
     }
 }

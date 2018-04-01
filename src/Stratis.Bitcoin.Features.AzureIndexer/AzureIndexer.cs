@@ -13,6 +13,7 @@ using Stratis.Bitcoin.Features.AzureIndexer.Chain;
 using Stratis.Bitcoin.Features.AzureIndexer.Indexing;
 using Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks;
 using Stratis.Bitcoin.Features.AzureIndexer.Wallet;
+using Stratis.Bitcoin.Features.Consensus.Rules;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer
 {
@@ -26,8 +27,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
     public class AzureIndexer
     {
-        internal const int BlockHeaderPerRow = 6;
-
         public AzureIndexer(IndexerConfiguration configuration)
         {
             this.TaskScheduler = TaskScheduler.Default;
@@ -80,8 +79,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
             using (IndexerTrace.NewCorrelation("Index main chain to azure started"))
             {
-                this.Configuration.GetChainTable().SafeCreateIfNotExistsAsync(cancellationToken).GetAwaiter().GetResult();
                 IndexerTrace.InputChainTip(chain.Tip);
+
                 var client = this.Configuration.CreateIndexerClient();
                 var changes = client.GetChainChangesUntilFork(chain.Tip, true, cancellationToken).ToList();
 
@@ -231,16 +230,20 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
 
         internal void Index(ChainBase chain, int startHeight, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var entries = new List<ChainPartEntry>(((chain.Height - startHeight) / BlockHeaderPerRow) + 5);
+            var capacity = ((chain.Height - startHeight) / BlockHeaderPerRow) + (BlockHeaderPerRow == 1 ? 1 : BlockHeaderPerRow - 1);
+            var entries = new List<ChainPartEntry>(capacity);
             startHeight = startHeight - (startHeight % BlockHeaderPerRow);
             ChainPartEntry chainPart = null;
+
             for (var i = startHeight; i <= chain.Tip.Height; i++)
             {
                 if (chainPart == null)
+                {
                     chainPart = new ChainPartEntry()
                     {
                         ChainOffset = i
                     };
+                }
 
                 var block = chain.GetBlock(i);
                 chainPart.BlockHeaders.Add(block.Header);
@@ -290,7 +293,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             buckets.Remove(array[0].PartitionKey);
         }
 
-
         private void Index(IReadOnlyList<ChainPartEntry> chainParts, CancellationToken cancellationToken = default(CancellationToken))
         {
             var table = this.Configuration.GetChainTable();
@@ -300,7 +302,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             foreach (var entry in chainParts)
             {
                 batch.Add(TableOperation.InsertOrReplace(entry.ToEntity()));
-                if (batch.Count == 100)
+                if (batch.Count == ChainBatchUploadCount)
                 {
                     table.ExecuteBatchAsync(batch).GetAwaiter().GetResult();
                     batch = new TableBatchOperation();
@@ -325,5 +327,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public bool IgnoreCheckpoints { get; set; }
 
         public int ToHeight { get; set; }
+
+        internal int BlockHeaderPerRow { get; set; } = 6;
+
+        internal int ChainBatchUploadCount { get; set; } = 100;
     }
 }
