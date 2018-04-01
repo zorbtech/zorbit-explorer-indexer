@@ -15,8 +15,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         void Index(BlockFetcher blockFetcher, TaskScheduler scheduler);
 
         bool SaveProgression { get; set; }
-
-        bool EnsureIsSetup { get; set; }
     }
 
     public abstract class IndexTask<TIndexed> : IIndexTask
@@ -40,11 +38,6 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             try
             {
                 SetThrottling();
-
-                if (EnsureIsSetup)
-                {
-                    EnsureSetup().Wait();
-                }
 
                 var bulk = new BulkImport<TIndexed>(PartitionSize);
                 if (!SkipToEnd)
@@ -183,7 +176,5 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         public bool SaveProgression { get; set; }
 
         public int MaxQueued { get; set; }
-
-        public bool EnsureIsSetup { get; set; } = true;
     }
 }
