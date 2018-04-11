@@ -6,19 +6,24 @@ using Stratis.Bitcoin.Features.AzureIndexer.Wallet;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 {
-    public class IndexBalanceTask : IndexTableEntitiesTaskBase<OrderedBalanceChange>
+    public class BalanceTask : IndexTableEntitiesTaskBase<OrderedBalanceChange>
     {
+        private readonly string _partitionKey;
         private readonly WalletRuleEntryCollection _walletRules;
 
-        public IndexBalanceTask(IndexerConfiguration conf, WalletRuleEntryCollection walletRules)
-            : base(conf)
+        public BalanceTask(
+            string partitionKey,
+            AzureStorageClient storageClient, 
+            WalletRuleEntryCollection walletRules)
+            : base(storageClient)
         {
+            _partitionKey = partitionKey;
             _walletRules = walletRules;
         }
 
         protected override Microsoft.WindowsAzure.Storage.Table.CloudTable GetCloudTable()
         {
-            return Configuration.GetBalanceTable();
+            return StorageClient.GetBalanceTable();
         }
 
         protected override Microsoft.WindowsAzure.Storage.Table.ITableEntity ToTableEntity(OrderedBalanceChange item)
@@ -26,13 +31,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             return item.ToEntity();
         }
 
-        protected override void ProcessBlock(BlockInfo block, BulkImport<OrderedBalanceChange> bulk)
+        protected override void ProcessBlock(BlockInfo blockInfo, BulkImport<OrderedBalanceChange> bulk)
         {
-            foreach (var tx in block.Block.Transactions)
+            foreach (var tx in blockInfo.Block.Transactions)
             {
                 var txId = tx.GetHash();
 
-                var entries = Extract(txId, tx, block.BlockId, block.Block.Header, block.Height);
+                var entries = Extract(txId, tx, blockInfo.BlockId, blockInfo.Block.Header, blockInfo.Height);
                 foreach (var entry in entries)
                 {
                     bulk.Add(entry.PartitionKey, entry);

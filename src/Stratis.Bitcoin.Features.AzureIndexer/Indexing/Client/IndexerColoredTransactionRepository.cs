@@ -60,26 +60,38 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing
 
     public class IndexerColoredTransactionRepository : IColoredTransactionRepository
     {
-        public IndexerColoredTransactionRepository(IndexerConfiguration config)
+        public IndexerColoredTransactionRepository(
+            FullNode fullNode,
+            ConcurrentChain chain,
+            AzureStorageClient storageClient, 
+            AzureIndexerSettings settings)
         {
-            Configuration = config ?? throw new ArgumentNullException("config");
-            Transactions = new IndexerTransactionRepository(config);
+            FullNode = fullNode;
+            Chain = chain;
+            StorageClient = storageClient ?? throw new ArgumentNullException("storageClient");
+            Settings = settings;
+            Transactions = new IndexerTransactionRepository(FullNode, Chain, storageClient, settings);
         }
 
         public async Task<ColoredTransaction> GetAsync(uint256 txId)
         {
-            var client = Configuration.CreateIndexerClient();
+            var client = new IndexerClient(FullNode, Chain, StorageClient, Settings);
             var tx = await client.GetTransactionAsync(false, false, txId).ConfigureAwait(false);
             return tx?.ColoredTransaction;
         }
 
         public Task PutAsync(uint256 txId, ColoredTransaction colored)
         {
-            Configuration.CreateIndexer().Index(new TransactionEntry.Entity(txId, colored));
-            return Task.FromResult(false);
+            return new AzureIndexerObsolete(FullNode, Chain, StorageClient, Settings).IndexTransactionsAsync(new TransactionEntry.Entity(txId, colored));
         }
 
-        public IndexerConfiguration Configuration { get; }
+        public FullNode FullNode { get; }
+
+        public ConcurrentChain Chain { get; }
+
+        public AzureStorageClient StorageClient { get; }
+
+        public AzureIndexerSettings Settings { get; }
 
         public ITransactionRepository Transactions { get; set; }
     }

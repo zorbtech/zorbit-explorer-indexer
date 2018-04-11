@@ -8,6 +8,9 @@ using Stratis.Bitcoin.Builder;
 using Stratis.Bitcoin.Builder.Feature;
 using Stratis.Bitcoin.Configuration;
 using Stratis.Bitcoin.Configuration.Logging;
+using Stratis.Bitcoin.Features.AzureIndexer.Indexing;
+using Stratis.Bitcoin.Features.AzureIndexer.Indexing.Blocks;
+using Stratis.Bitcoin.Features.AzureIndexer.Indexing.Chain;
 using Stratis.Bitcoin.Interfaces;
 
 [assembly: InternalsVisibleTo("Stratis.Bitcoin.Features.AzureIndexer.Tests")]
@@ -19,35 +22,47 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
     /// </summary>
     public class AzureIndexerFeature : FullNodeFeature, INodeStats
     {
+        /// <summary>The full node.</summary>
+        private readonly FullNode _fullNode;
+
         /// <summary>The loop responsible for indexing blocks to azure.</summary>
-        protected readonly AzureIndexerLoop IndexerLoop;
+        private readonly AzureIndexerLoop _indexerLoop;
 
         /// <summary>The node's settings.</summary>
-        protected readonly NodeSettings NodeSettings;
+        private readonly NodeSettings _nodeSettings;
 
         /// <summary>The Azure Indexer settings.</summary>
-        protected readonly AzureIndexerSettings IndexerSettings;
+        private readonly AzureIndexerSettings _indexerSettings;
+
+        /// <summary>The Azure Storage client.</summary>
+        private readonly AzureStorageClient _storageClient;
 
         /// <summary>Instance logger.</summary>
         private readonly ILogger _logger;
 
         /// <summary>
-        /// Constructs the Azure Indexer feature.
+        /// Creates a new instance of the Azure Indexer feature
         /// </summary>
-        /// <param name="azureIndexerLoop">The loop responsible for indexing blocks to azure.</param>
-        /// <param name="nodeSettings">The settings of the full node.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="indexerSettings">The Azure Indexer settings.</param>
+        /// <param name="fullNode"></param>
+        /// <param name="storageClient"></param>
+        /// <param name="azureIndexerLoop"></param>
+        /// <param name="nodeSettings"></param>
+        /// <param name="indexerSettings"></param>
+        /// <param name="loggerFactory"></param>
         public AzureIndexerFeature(
+            FullNode fullNode,
+            AzureStorageClient storageClient,
             AzureIndexerLoop azureIndexerLoop,
             NodeSettings nodeSettings,
-            ILoggerFactory loggerFactory,
-            AzureIndexerSettings indexerSettings)
+            AzureIndexerSettings indexerSettings,
+            ILoggerFactory loggerFactory)
         {
-            this.IndexerLoop = azureIndexerLoop;
-            this._logger = loggerFactory.CreateLogger(this.GetType().FullName);
-            this.NodeSettings = nodeSettings;
-            this.IndexerSettings = indexerSettings;
+            this._fullNode = fullNode;
+            this._storageClient = storageClient;
+            this._indexerLoop = azureIndexerLoop;
+            this._nodeSettings = nodeSettings;
+            this._indexerSettings = indexerSettings;
+            this._logger = loggerFactory.CreateLogger<AzureIndexerFeature>();
         }
 
         /// <summary>
@@ -56,15 +71,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <param name="benchLogs">The sring builder to add the statistics to.</param>
         public void AddNodeStats(StringBuilder benchLogs)
         {
-            var highestBlock = this.IndexerLoop.StoreTip;
-
-            if (highestBlock == null)
-                return;
-
-            benchLogs.AppendLine($"Index.Height: ".PadRight(LoggingConfiguration.ColumnLength + 1) +
-                highestBlock.Height.ToString().PadRight(8) +
-                $" Index.Hash: ".PadRight(LoggingConfiguration.ColumnLength - 1) +
-                highestBlock.HashBlock);
+            this._indexerLoop.AddNodeStats(benchLogs);
         }
 
         /// <summary>
@@ -73,13 +80,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public override void Initialize()
         {
             this._logger.LogTrace("()");
-            this.IndexerLoop.Initialize();
+            this._storageClient.InitaliseAsync().GetAwaiter().GetResult();
+            this._indexerLoop.Initialize(this._fullNode.NodeLifetime.ApplicationStopping);
             this._logger.LogTrace("(-)");
         }
 
         public override void LoadConfiguration()
         {
-            this.IndexerSettings.Load(this.NodeSettings);
+            this._indexerSettings.Load(this._nodeSettings);
         }
 
         public static void PrintHelp(Network network)
@@ -93,7 +101,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         public override void Dispose()
         {
             this._logger.LogInformation("Stopping Indexer...");
-            this.IndexerLoop.Shutdown();
+            this._indexerLoop.Shutdown();
             this._logger.LogTrace("(-)");
         }
     }
@@ -112,10 +120,24 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
                 features
                 .AddFeature<AzureIndexerFeature>()
                 .FeatureServices(services =>
-                {
-                    services.AddSingleton<AzureIndexerLoop>();
-                    services.AddSingleton<AzureIndexerSettings>(new AzureIndexerSettings(setup));
-                });
+                    {
+                        services.AddTransient<AzureStorageClient>();
+                        services.AddSingleton<AzureIndexerLoop>();
+                        services.AddSingleton<ChainIndexer>();
+                        services.AddSingleton<BlockIndexer>();
+                        services.AddSingleton<BlockTaskFactory>();
+                        services.AddSingleton<BlockSummaryIndexer>();
+                        services.AddSingleton<BlockSummaryTaskFactory>();
+                        services.AddSingleton<TransactionIndexer>();
+                        services.AddSingleton<TransactionTaskFactory>();
+                        services.AddSingleton<BalanceIndexer>();
+                        services.AddSingleton<BalanceTaskFactory>();
+                        services.AddSingleton<WalletIndexer>();
+                        services.AddSingleton<WalletTaskFactory>();
+                        services.AddSingleton<IndexerClient>();
+                        services.AddSingleton<IChainClient, ChainClient>();
+                        services.AddSingleton<AzureIndexerSettings>(new AzureIndexerSettings(setup));
+                    });
             });
 
             return fullNodeBuilder;

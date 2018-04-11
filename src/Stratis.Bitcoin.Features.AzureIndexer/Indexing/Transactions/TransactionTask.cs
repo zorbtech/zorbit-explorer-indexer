@@ -3,25 +3,25 @@ using Stratis.Bitcoin.Features.AzureIndexer.Chain;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 {
-    public class IndexTransactionsTask : IndexTableEntitiesTaskBase<TransactionEntry.Entity>
+    public class TransactionTask : IndexTableEntitiesTaskBase<TransactionEntry.Entity>
     {
-        public IndexTransactionsTask(IndexerConfiguration configuration)
-            : base(configuration)
+        public TransactionTask(AzureStorageClient storageClient)
+            : base(storageClient)
         {
         }
         
-        protected override void ProcessBlock(BlockInfo block, BulkImport<TransactionEntry.Entity> bulk)
+        protected override void ProcessBlock(BlockInfo blockInfo, BulkImport<TransactionEntry.Entity> bulk)
         {
-            foreach (var transaction in block.Block.Transactions)
+            foreach (var transaction in blockInfo.Block.Transactions)
             {
-                var indexed = new TransactionEntry.Entity(null, transaction, block.BlockId);
+                var indexed = new TransactionEntry.Entity(null, transaction, blockInfo.BlockId);
                 bulk.Add(indexed.PartitionKey, indexed);
             }
         }
 
         protected override CloudTable GetCloudTable()
         {
-            return Configuration.GetTransactionTable();
+            return StorageClient.GetTransactionTable();
         }
 
         protected override ITableEntity ToTableEntity(TransactionEntry.Entity indexed)

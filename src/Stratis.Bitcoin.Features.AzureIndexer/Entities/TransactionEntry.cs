@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.WindowsAzure.Storage.Table;
 using NBitcoin;
 using NBitcoin.OpenAsset;
+using Stratis.Bitcoin.Features.AzureIndexer.Entities;
 using Stratis.Bitcoin.Features.AzureIndexer.Utils;
 using Stratis.Bitcoin.Utilities;
 

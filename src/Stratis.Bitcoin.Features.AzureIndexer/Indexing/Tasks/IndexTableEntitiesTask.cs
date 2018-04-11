@@ -18,8 +18,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
     {
         private readonly CloudTable _table;
 
-        public IndexTableEntitiesTask(IndexerConfiguration conf, CloudTable table)
-            : base(conf)
+        public IndexTableEntitiesTask(AzureStorageClient storageClient, CloudTable table)
+            : base(storageClient)
         {
             _table = table;
         }
@@ -65,7 +65,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             return item;
         }
 
-        protected override void ProcessBlock(BlockInfo block, BulkImport<ITableEntity> bulk)
+        protected override void ProcessBlock(BlockInfo blockInfo, BulkImport<ITableEntity> bulk)
         {
             throw new NotSupportedException();
         }
@@ -75,19 +75,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
     {
         private int _indexedEntities = 0;
 
-        protected IndexTableEntitiesTaskBase(IndexerConfiguration configuration)
-            : base(configuration)
+        protected IndexTableEntitiesTaskBase(AzureStorageClient storageClient)
+            : base(storageClient)
         {
         }
 
         protected abstract CloudTable GetCloudTable();
 
         protected abstract ITableEntity ToTableEntity(TIndexed item);
-
-        protected override Task EnsureSetup()
-        {
-            return GetCloudTable().CreateIfNotExistsAsync();
-        }
 
         protected override void IndexCore(string partitionName, IEnumerable<TIndexed> items)
         {
@@ -144,7 +139,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                         var entity = (DynamicTableEntity)GetEntity(op);
                         var serialized = entity.Serialize();
 
-                        Configuration
+                        StorageClient
                             .GetBlocksContainer()
                             .GetBlockBlobReference(entity.GetFatBlobName())
                             .UploadFromByteArrayAsync(serialized, 0, serialized.Length).GetAwaiter().GetResult();

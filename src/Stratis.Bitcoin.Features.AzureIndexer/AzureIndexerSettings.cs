@@ -7,7 +7,7 @@ using System.Text;
 namespace Stratis.Bitcoin.Features.AzureIndexer
 {
     /// <summary>
-    /// Configuration related to Azure Indexer feature.
+    /// StorageClient related to Azure Indexer feature.
     /// </summary>
     public class AzureIndexerSettings
     {
@@ -38,6 +38,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         /// <summary>Option to reset Azure storage on init.</summary>
         public bool ResetStorage { get; set; }
 
+        /// <summary>Batch size to index.</summary>
+        public int BatchSize { get; set; }
+
         /// <summary>The callback used to modify settings on startup.</summary>
         private readonly Action<AzureIndexerSettings> _callback = null;
 
@@ -52,6 +55,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this.StorageNamespace = "";
             this.CheckpointsetName = "default";
             this.CheckpointInterval = TimeSpan.Parse("00:15:00");
+            this.ResetStorage = false;
+            this.BatchSize = 100;
         }
 
         /// <summary>
@@ -64,9 +69,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         }
 
         /// <summary>
-        /// Loads the Azure Indexer settings from the application configuration.
+        /// Loads the Azure Indexer settings from the application storageClient.
         /// </summary>
-        /// <param name="nodeSettings">Application configuration.</param>
+        /// <param name="nodeSettings">Application storageClient.</param>
         private void LoadSettingsFromConfig(NodeSettings nodeSettings)
         {
             var config = nodeSettings.ConfigReader;
@@ -82,13 +87,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             this.CheckpointsetName = config.GetOrDefault<string>("chkptset", "default");
             this.StorageNamespace = config.GetOrDefault<string>("indexprefix", string.Empty);
             this.ResetStorage = config.GetOrDefault<bool>("resetstorage", false);
+            this.BatchSize = config.GetOrDefault<int>("batchsize", 100);
         }
 
         /// <summary>
-        /// Loads the Azure Indexer settings from the application configuration.
+        /// Loads the Azure Indexer settings from the application storageClient.
         /// Allows the callback to override those settings.
         /// </summary>
-        /// <param name="nodeSettings">Application configuration.</param>
+        /// <param name="nodeSettings">Application storageClient.</param>
         public void Load(NodeSettings nodeSettings)
         {
             // Get values from config
@@ -116,6 +122,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             builder.AppendLine($"-chkptset=<string>                     Checkpointset name. Default is 'default'.");
             builder.AppendLine($"-indexprefix=<string>                  Name prefix for index tables and blob container.");
             builder.AppendLine($"-resetsorage                           Reset Azure storage on init.");
+            builder.AppendLine($"-batchsize                             The size of the batch index.");
 
             defaults.Logger.LogInformation(builder.ToString());
         }

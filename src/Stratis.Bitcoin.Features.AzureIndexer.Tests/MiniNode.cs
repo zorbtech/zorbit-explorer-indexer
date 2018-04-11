@@ -49,7 +49,7 @@
 				while(height <= ChainBuilder.Chain.Height)
 				{
 					var block = ChainBuilder.Chain.GetBlock(height);
-					getData.Headers.Add(block.Header);
+					getData.Headers.Add(block.BlockHeader);
 					if(block.HashBlock == getheader.HashStop)
 						break;
 					height++;

@@ -237,7 +237,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             ReceivedCoins = new CoinCollection();
         }
 
-        internal OrderedBalanceChange(DynamicTableEntity entity)
+        public OrderedBalanceChange(DynamicTableEntity entity)
         {
             var splitted = entity.RowKey.Split(new string[] { "-" }, StringSplitOptions.RemoveEmptyEntries);
             Height = Helper.StringToHeight(splitted[1]);
@@ -419,7 +419,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             return amount;
         }
 
-        internal DynamicTableEntity ToEntity()
+        public DynamicTableEntity ToEntity()
         {
             var entity = new DynamicTableEntity();
             entity.ETag = "*";
@@ -456,14 +456,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             return entity;
         }
 
-        internal OrderedBalanceChange(uint256 txId, string walletId, Script scriptPubKey, uint256 blockId, BlockHeader blockHeader, int height)
+        public OrderedBalanceChange(uint256 txId, string walletId, Script scriptPubKey, uint256 blockId, BlockHeader blockHeader, int height)
             : this()
         {
             Init(txId, new BalanceId(walletId), blockId, blockHeader, height);
             _scriptPubKey = scriptPubKey;
         }
 
-        internal OrderedBalanceChange(string walletId, OrderedBalanceChange source)
+        public OrderedBalanceChange(string walletId, OrderedBalanceChange source)
             : this(source.TransactionId, walletId, source.ScriptPubKey, source.BlockId, null, source.Height)
         {
             SeenUtc = source.SeenUtc;
@@ -471,7 +471,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             HasOpReturn = source.HasOpReturn;
         }
 
-        internal class IntCompactVarInt : CompactVarInt
+        public class IntCompactVarInt : CompactVarInt
         {
             public IntCompactVarInt(uint value)
                 : base(value, 4)
@@ -484,7 +484,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             }
         }
 
-        internal OrderedBalanceChange(uint256 txId, Script scriptPubKey, uint256 blockId, BlockHeader blockHeader, int height)
+        public OrderedBalanceChange(uint256 txId, Script scriptPubKey, uint256 blockId, BlockHeader blockHeader, int height)
             : this()
         {
             var balanceId = new BalanceId(scriptPubKey);
@@ -494,7 +494,8 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
                 _scriptPubKey = scriptPubKey;
             }
         }
-        internal Task<bool> EnsureSpentCoinsLoadedAsync(uint256[] parentIds, Transaction[] transactions)
+
+        public Task<bool> EnsureSpentCoinsLoadedAsync(uint256[] parentIds, Transaction[] transactions)
         {
             var repo = new NoSqlTransactionRepository();
             for (var i = 0; i < parentIds.Length; i++)
@@ -506,7 +507,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             return EnsureSpentCoinsLoadedAsync(repo);
         }
 
-        internal void Merge(OrderedBalanceChange other, WalletRule walletRule)
+        public void Merge(OrderedBalanceChange other, WalletRule walletRule)
         {
             if (other.ReceivedCoins.Count != 0)
             {
@@ -610,7 +611,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Balance
             }
         }
 
-        internal Script ScriptPubKey
+        public Script ScriptPubKey
         {
             get
             {

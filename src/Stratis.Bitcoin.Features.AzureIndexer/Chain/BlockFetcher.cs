@@ -51,15 +51,21 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
             var lastHeights = new Queue<int>();
 
             var fork = BlockHeaders.FindFork(Checkpoint.BlockLocator);
-            var headers = BlockHeaders.EnumerateAfter(fork);
-            headers = headers.Where(h => h.Height <= ToHeight);
+            var headers = BlockHeaders
+                .EnumerateAfter(fork).Where(h => h.Height <= ToHeight)
+                .ToList();
+
             var first = headers.FirstOrDefault();
             if (first == null)
+            {
                 yield break;
+            }
+
             var height = first.Height;
             if (first.Height == 1)
             {
-                headers = new[] { fork }.Concat(headers);
+                var headersWithGenesis = new List<ChainedBlock> { fork };
+                headers = headersWithGenesis.Concat(headers).ToList();
                 height = 0;
             }
 
@@ -118,7 +124,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
         public CancellationToken CancellationToken { get; set; }
 
         public TimeSpan NeedSaveInterval { get; set; }
-        
+
         public ChainedBlock LastProcessed { get; private set; }
 
         public int FromHeight { get; set; }
@@ -130,7 +136,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Chain
         public IBlocksRepository BlocksRepository { get; }
 
         public ChainBase BlockHeaders { get; }
-        
+
         public bool NeedSave => (DateTime.UtcNow - _lastSaved) > NeedSaveInterval;
     }
 }

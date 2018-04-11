@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using NBitcoin;
 using Stratis.Bitcoin.Features.AzureIndexer.Chain;
 
@@ -10,6 +11,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
     {
         private readonly IndexerTester _tester;
         private readonly ConcurrentChain _chain = new ConcurrentChain(Network.TestNet);
+        private uint _nonce = 0;
 
         public ConcurrentChain Chain
         {
@@ -21,7 +23,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         public ChainBuilder(IndexerTester indexerTester)
         {
             this._tester = indexerTester;
-            var genesis = indexerTester.Indexer.Configuration.Network.GetGenesis();
+            var genesis = indexerTester.Indexer.StorageClient.Network.GetGenesis();
             _blocks.Add(genesis.GetHash(), genesis);
         }
 
@@ -61,15 +63,18 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         {
             var b = GetCurrentBlock();
             b.Transactions.Add(tx);
-            if (!tx.IsCoinBase)
+            if (tx.IsCoinBase)
             {
-                _tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
-                if (indexBalances)
-                    _tester.Indexer.IndexOrderedBalance(tx);
+                return;
+            }
+
+            _tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx, null));
+            if (indexBalances)
+            {
+                _tester.Indexer.IndexOrderedBalance(tx);
             }
         }
 
-        private uint _nonce = 0;
         private Block CreateNewBlock()
         {
             var b = new Block();
@@ -95,7 +100,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         private readonly List<Block> _unsyncBlocks = new List<Block>();
         public void SyncIndexer()
         {
-            _tester.Indexer.IndexChain(_chain);
+            _tester.ChainIndexer.Index(_chain, CancellationToken.None);
             var walletRules = _tester.Client.GetAllWalletRules();
             foreach (var b in _unsyncBlocks)
             {
@@ -103,7 +108,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 _tester.Indexer.IndexOrderedBalance(height, b);
                 foreach (var tx in b.Transactions)
                 {
-                    _tester.Indexer.Index(new[] { new TransactionEntry.Entity(tx.GetHash(), tx, b.GetHash()) });
+                    _tester.Indexer.IndexTransactions(new[] { new TransactionEntry.Entity(tx.GetHash(), tx, b.GetHash()) });
                 }
                 if (walletRules.Count() != 0)
                 {
@@ -155,7 +160,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
         public void Load(string blockFolder)
         {
-            var store = new NBitcoin.BitcoinCore.BlockStore(blockFolder, this._tester.Client.Configuration.Network);
+            var store = new NBitcoin.BitcoinCore.BlockStore(blockFolder, this._tester.Client.StorageClient.Network);
             foreach (var block in store.Enumerate(false))
             {
                 SubmitBlock(block.Item);

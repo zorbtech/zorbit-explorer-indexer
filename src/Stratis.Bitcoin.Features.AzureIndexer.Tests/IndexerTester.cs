@@ -13,7 +13,9 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 {
     public class IndexerTester : IDisposable
     {
-        private readonly AzureIndexer _importer;
+        private readonly ChainIndexer _chainIndexer;
+        private readonly AzureIndexerObsolete _importer;
+        private readonly AzureIndexerSettings _settings;
 
         private IndexerClient _client;
 
@@ -22,32 +24,30 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         private readonly uint256 KnownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
         private readonly uint256 UnknownTransactionId = uint256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33c");
 
-        public static IndexerConfiguration CreateConfiguration()
-        {
-            var confBuilder = new ConfigurationBuilder();
-            var config = new IndexerConfiguration(confBuilder.Build());
-            return config;
-        }
-
         public IndexerTester(string folder)
         {
-            TestUtils.EnsureNew(folder);
+            // TODO move to di
 
-            var config = AzureIndexerLoop.IndexerConfigFromSettings(
-                new AzureIndexerSettings() { StorageNamespace = folder }, Network.TestNet);
+           // _client = Indexer.StorageClient.CreateIndexerClient();
+            // _client.BalancePartitionSize = 1;
 
-            config.EnsureSetup();
+            //TestUtils.EnsureNew(folder);
 
-            _importer = config.CreateIndexer();
+            //var config = AzureIndexerLoop.IndexerConfigFromSettings(
+            //    new AzureIndexerSettings() { StorageNamespace = folder }, Network.TestNet);
 
-            var creating = new List<Task>();
-            foreach (var table in config.EnumerateTables())
-            {
-                creating.Add(table.CreateIfNotExistsAsync());
-            }
+            //config.EnsureSetup();
 
-            creating.Add(config.GetBlocksContainer().CreateIfNotExistsAsync());
-            Task.WaitAll(creating.ToArray());
+            //_importer = config.CreateIndexer();
+
+            //var creating = new List<Task>();
+            //foreach (var table in config.EnumerateTables())
+            //{
+            //    creating.Add(table.CreateIfNotExistsAsync());
+            //}
+
+            //creating.Add(config.GetBlocksContainer().CreateIfNotExistsAsync());
+            //Task.WaitAll(creating.ToArray());
         }
 
 
@@ -62,7 +62,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             */
             if (!Cached)
             {
-                foreach (var table in _importer.Configuration.EnumerateTables())
+                foreach (var table in _importer.StorageClient.EnumerateTables())
                 {
                     table.CreateIfNotExistsAsync().GetAwaiter().GetResult();
                     var entities = table.ExecuteQuery(new TableQuery()).ToList();
@@ -71,7 +71,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                         table.ExecuteAsync(TableOperation.Delete(e)).GetAwaiter().GetResult();
                     });
                 }
-                var container = _importer.Configuration.GetBlocksContainer();
+                var container = _importer.StorageClient.GetBlocksContainer();
                 var blobs = container.ListBlobsAsync("", true, BlobListingDetails.None).GetAwaiter().GetResult().ToList();
 
                 Parallel.ForEach(blobs, b =>
@@ -111,28 +111,17 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         }
         */
 
-        public IndexerClient Client
-        {
-            get
-            {
-                if (_client == null)
-                {
-                    _client = Indexer.Configuration.CreateIndexerClient();
-                    _client.BalancePartitionSize = 1;
-                }
-                return _client;
-            }
-        }
+        public IndexerClient Client { get; }
 
         // TODO: Find a NodeServer replacement and fix this code
         /*
         NodeServer _NodeServer;
         internal MiniNode CreateLocalNode()
         {
-            NodeServer nodeServer = new NodeServer(Client.Configuration.Network, internalPort: (ushort)RandomUtils.GetInt32());
+            NodeServer nodeServer = new NodeServer(Client.StorageClient.Network, internalPort: (ushort)RandomUtils.GetInt32());
             nodeServer.Listen();
             _NodeServer = nodeServer;
-            Indexer.Configuration.Node = "127.0.0.1:" + nodeServer.LocalEndpoint.Port;
+            Indexer.StorageClient.Node = "127.0.0.1:" + nodeServer.LocalEndpoint.Port;
             return new MiniNode(this, nodeServer);
         }
         */
@@ -144,6 +133,14 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
         public bool Cached { get; set; }
 
-        public AzureIndexer Indexer => _importer;
+        public FullNode FullNode => throw new NotImplementedException();
+
+        public ConcurrentChain Chain => throw new NotImplementedException();
+
+        public AzureIndexerObsolete Indexer => _importer;
+
+        public ChainIndexer ChainIndexer => _chainIndexer;
+
+        public AzureIndexerSettings Settings => _settings;
     }
 }

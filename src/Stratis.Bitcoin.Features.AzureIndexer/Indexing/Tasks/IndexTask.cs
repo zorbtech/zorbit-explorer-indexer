@@ -10,6 +10,11 @@ using Stratis.Bitcoin.Features.AzureIndexer.Chain;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 {
+    public interface IIndexTaskFactory<out T> where T : IIndexTask
+    {
+        T CreateTask();
+    }
+
     public interface IIndexTask
     {
         void Index(BlockFetcher blockFetcher, TaskScheduler scheduler);
@@ -19,15 +24,27 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
 
     public abstract class IndexTask<TIndexed> : IIndexTask
     {
+        protected abstract int PartitionSize { get; }
+
+        protected virtual bool SkipToEnd => false;
+
+        protected TimeSpan Timeout = TimeSpan.FromMinutes(5.0);
+
+        public AzureStorageClient StorageClient { get; }
+
+        public bool SaveProgression { get; set; }
+
+        public int MaxQueued { get; set; }
+
         private readonly ExponentialBackoff _retry = new ExponentialBackoff(15, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromMilliseconds(200));
 
         private Exception _taskException;
 
-        protected IndexTask(IndexerConfiguration configuration)
+        protected IndexTask(AzureStorageClient storageClient)
         {
-            this.Configuration = configuration ?? throw new ArgumentNullException("configuration");
+            this.StorageClient = storageClient ?? throw new ArgumentNullException("storageClient");
             SaveProgression = true;
             MaxQueued = 100;
         }
@@ -93,9 +110,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
             }
         }
 
-        protected abstract Task EnsureSetup();
-
-        protected abstract void ProcessBlock(BlockInfo block, BulkImport<TIndexed> bulk);
+        protected abstract void ProcessBlock(BlockInfo blockInfo, BulkImport<TIndexed> bulk);
 
         protected abstract void IndexCore(string partitionName, IEnumerable<TIndexed> items);
 
@@ -134,7 +149,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
         private void SetThrottling()
         {
             Helper.SetThrottling();
-            var tableServicePoint = ServicePointManager.FindServicePoint(Configuration.TableClient.BaseUri);
+            var tableServicePoint = ServicePointManager.FindServicePoint(StorageClient.TableClient.BaseUri);
             tableServicePoint.ConnectionLimit = 1000;
         }
 
@@ -160,21 +175,5 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Indexing.Tasks
                 ExceptionDispatchInfo.Capture(_taskException).Throw();
             }
         }
-
-        protected abstract int PartitionSize { get; }
-
-        /// <summary>
-        /// Fast forward indexing to the end (if scanning not useful)
-        /// </summary>
-        protected virtual bool SkipToEnd => false;
-
-
-        protected TimeSpan Timeout = TimeSpan.FromMinutes(5.0);
-
-        public IndexerConfiguration Configuration { get; }
-
-        public bool SaveProgression { get; set; }
-
-        public int MaxQueued { get; set; }
     }
 }

@@ -10,9 +10,9 @@ using Newtonsoft.Json;
 
 namespace Stratis.Bitcoin.Features.AzureIndexer
 {
-    internal static class Helper
+    public static class Helper
     {
-        internal static readonly JsonSerializerSettings Settings = new JsonSerializerSettings();
+        public static readonly JsonSerializerSettings Settings = new JsonSerializerSettings();
 
         internal static string Format => new string(Enumerable.Range(0, int.MaxValue.ToString().Length).Select(c => '0').ToArray());
 
@@ -26,7 +26,29 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             Settings.Converters.Add(new WalletRuleConverter());
         }
 
-        internal static List<T> DeserializeList<T>(byte[] bytes) where T : IBitcoinSerializable, new()
+        public static string GetPartitionKey(int bits, uint nbr)
+        {
+            var bytes = BitConverter.GetBytes(nbr);
+            return GetPartitionKey(bits, bytes, 0, 4);
+        }
+
+        public static string GetPartitionKey(int bits, byte[] bytes, int startIndex, int length)
+        {
+            ulong result = 0;
+            var remainingBits = bits;
+            for (var i = 0; i < length; i++)
+            {
+                var taken = Math.Min(8, remainingBits);
+                var inc = (bytes[startIndex + i] & ~(0xFFUL >> taken)) << (i * 8);
+                result = result + inc;
+                remainingBits -= taken;
+                if (remainingBits == 0)
+                    break;
+            }
+            return result.ToString("X2");
+        }
+
+        public static List<T> DeserializeList<T>(byte[] bytes) where T : IBitcoinSerializable, new()
         {
             var outpoints = new List<T>();
             if (bytes == null)
@@ -47,7 +69,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return outpoints;
         }
 
-        internal static byte[] SerializeList<T>(IEnumerable<T> items) where T : IBitcoinSerializable
+        public static byte[] SerializeList<T>(IEnumerable<T> items) where T : IBitcoinSerializable
         {
             using (var ms = new MemoryStream())
             {
@@ -60,7 +82,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-        internal static byte[] GetBytes(MemoryStream stream)
+        public static byte[] GetBytes(MemoryStream stream)
         {
             if (stream.Length == 0)
             {
@@ -72,7 +94,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return buffer;
         }
 
-        internal static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
+        public static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
         {
             if (dictionary.ContainsKey(key))
             {
@@ -83,19 +105,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return true;
         }
 
-        internal static string GetPartitionKey(int bits, uint nbr)
-        {
-            var bytes = BitConverter.GetBytes(nbr);
-            return GetPartitionKey(bits, bytes, 0, 4);
-        }
-
-        internal static bool IsError(Exception ex, string code)
+        public static bool IsError(Exception ex, string code)
         {
             var actualCode = (ex as StorageException)?.RequestInformation?.ExtendedErrorInformation?.ErrorCode;
             return actualCode == code;
         }
-        
-        internal static void SetEntityProperty(DynamicTableEntity entity, string property, byte[] data)
+
+        public static void SetEntityProperty(DynamicTableEntity entity, string property, byte[] data)
         {
             if (data == null || data.Length == 0)
                 return;
@@ -116,7 +132,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             }
         }
 
-        internal static byte[] GetEntityProperty(DynamicTableEntity entity, string property)
+        public static byte[] GetEntityProperty(DynamicTableEntity entity, string property)
         {
             var chunks = new List<byte[]>();
             var i = 0;
@@ -140,33 +156,17 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
             return data;
         }
 
-        internal static string GetPartitionKey(int bits, byte[] bytes, int startIndex, int length)
-        {
-            ulong result = 0;
-            var remainingBits = bits;
-            for (var i = 0; i < length; i++)
-            {
-                var taken = Math.Min(8, remainingBits);
-                var inc = (bytes[startIndex + i] & ~(0xFFUL >> taken)) << (i * 8);
-                result = result + inc;
-                remainingBits -= taken;
-                if (remainingBits == 0)
-                    break;
-            }
-            return result.ToString("X2");
-        }
-
-        internal static string Serialize(object obj)
+        public static string Serialize(object obj)
         {
             return JsonConvert.SerializeObject(obj, Settings);
         }
 
-        internal static T DeserializeObject<T>(string str)
+        public static T DeserializeObject<T>(string str)
         {
             return JsonConvert.DeserializeObject<T>(str, Settings);
         }
 
-        internal static void SetThrottling()
+        public static void SetThrottling()
         {
             ServicePointManager.UseNagleAlgorithm = false;
             ServicePointManager.Expect100Continue = false;
@@ -174,13 +174,13 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         }
 
         //Convert '012' to '987'
-        internal static string HeightToString(int height)
+        public static string HeightToString(int height)
         {
             var input = height.ToString(Format);
             return ToggleChars(input);
         }
 
-        internal static string ToggleChars(string input)
+        public static string ToggleChars(string input)
         {
             var result = new char[input.Length];
             for (var i = 0; i < result.Length; i++)
@@ -192,7 +192,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer
         }
 
         //Convert '987' to '012'
-        internal static int StringToHeight(string rowkey)
+        public static int StringToHeight(string rowkey)
         {
             return int.Parse(ToggleChars(rowkey));
         }

@@ -128,7 +128,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 node.ChainBuilder.Load("../../../Data/blocks");
 
                 // Start with an empty container
-                var blobs = tester.Indexer.Configuration.GetBlocksContainer()?.ListBlobsAsync("", true, BlobListingDetails.None).GetAwaiter().GetResult().ToList();
+                var blobs = tester.Indexer.StorageClient.GetBlocksContainer()?.ListBlobsAsync("", true, BlobListingDetails.None).GetAwaiter().GetResult().ToList();
                 if (blobs != null)
                 {
                     Parallel.ForEach(blobs, b =>
@@ -327,7 +327,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 b = chainBuilder.SubmitBlock();
                 chainBuilder.SyncIndexer();
 
-                var ctx = new IndexerColoredTransactionRepository(tester.Indexer.Configuration);
+                var ctx = new IndexerColoredTransactionRepository(tester.FullNode, tester.Chain, tester.Indexer.StorageClient, tester.Settings);
 
                 balance = tester.Client.GetOrderedBalance(nico.GetAddress()).ToArray();
                 var coloredEntry = balance[0];
@@ -408,7 +408,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
             using (var tester = this.CreateTester())
             {
                 var node = tester.CreateLocalNode();
-                var chain = new ConcurrentChain(tester.Client.Configuration.Network);
+                var chain = new ConcurrentChain(tester.Client.StorageClient.Network);
 
                 node.ChainBuilder.Generate();
                 var fork = node.ChainBuilder.Generate();
@@ -432,7 +432,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
 
                 Assert.Equal(firstTip.GetHash(), chain.Tip.HashBlock);
 
-                node.ChainBuilder.Chain.SetTip(fork.Header);
+                node.ChainBuilder.Chain.SetTip(fork.BlockHeader);
                 node.ChainBuilder.Generate();
                 node.ChainBuilder.Generate();
                 var secondTip = node.ChainBuilder.Generate();
@@ -448,10 +448,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 tester.Indexer.IndexNodeMainChain();
                 result = tester.Client.GetChainChangesUntilFork(chain.Tip, false).ToList();
 
-                Assert.Equal(ultimateTip.Header.GetHash(), result[0].BlockId);
+                Assert.Equal(ultimateTip.BlockHeader.GetHash(), result[0].BlockId);
                 Assert.Equal(tester.Client.GetBestBlock().BlockId, result[0].BlockId);
                 result.UpdateChain(chain);
-                Assert.Equal(ultimateTip.Header.GetHash(), chain.Tip.HashBlock);
+                Assert.Equal(ultimateTip.BlockHeader.GetHash(), chain.Tip.HashBlock);
 
                 ConcurrentChain chain2 = new ConcurrentChain();
                 var changes = tester.Client.GetChainChangesUntilFork(chain2.Tip, false);
@@ -463,7 +463,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         //[Fact]
         //public void CanGetMultipleEntries()
         //{
-        //  var client = new IndexerClient(new IndexerConfiguration()
+        //  var client = new IndexerClient(new AzureStorageClient()
         //  {
         //     Network = Network.Main,
         //  });
@@ -924,7 +924,10 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
         [Fact]
         public void CanGetBalanceSheet()
         {
-            if (!StartAzureStorageDependentTest()) return;
+            if (!StartAzureStorageDependentTest())
+            {
+                return;
+            }
 
             using(var tester = this.CreateTester())
             {
@@ -950,7 +953,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 Assert.True(sheet.All[0].Amount == Money.Parse("20.0"));
 
                 var tx = chainBuilder.EmitMoney(bob, "10.0", false);
-                tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
+                tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx, null));
                 tester.Indexer.IndexOrderedBalance(tx);
 
                 sheet = tester.Client.GetOrderedBalance(bob).AsBalanceSheet(chainBuilder.Chain);
@@ -1011,7 +1014,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 Assert.True(sheet.All[0].BlockId != null);
 
                 sheet.All[0].CustomData = "test";
-                tester.Indexer.Index(new OrderedBalanceChange[] { sheet.All[0] });
+                tester.Indexer.IndexTransactions(new OrderedBalanceChange[] { sheet.All[0] });
 
                 sheet = tester.Client.GetOrderedBalance(bob).AsBalanceSheet(chainBuilder.Chain);
                 Assert.True(sheet.All[0].CustomData == "test");
@@ -1075,7 +1078,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 var tx = new Transaction();
                 for(var i = 0; i < 4; i++)
                     tx.AddOutput(new TxOut(Money.Zero, new Script(new byte[500 * 1024])));
-                tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
+                tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx, null));
 
                 var indexed = tester.Client.GetTransaction(tx.GetHash());
                 Assert.NotNull(indexed);
@@ -1086,7 +1089,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 for(var i = 0; i < 4; i++)
                     tx2.Inputs.Add(new TxIn(new OutPoint(txhash, i)));
                 tx2.AddOutput(new TxOut(Money.Zero, new Script(RandomUtils.GetBytes(500 * 1024))));
-                tester.Indexer.Index(new TransactionEntry.Entity(null, tx2, null));
+                tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx2, null));
                 indexed = tester.Client.GetTransaction(tx2.GetHash());
                 Assert.NotNull(indexed);
                 Assert.True(tx2.GetHash() == indexed.Transaction.GetHash());
@@ -1413,7 +1416,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                         .SetChange(satoshi)
                         .BuildTransaction(true);
 
-                tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
+                tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx, null));
                 tester.Indexer.IndexOrderedBalance(tx);
 
                 tx = new TransactionBuilder()
@@ -1423,7 +1426,7 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                        .SetChange(satoshi)
                        .BuildTransaction(true);
 
-                tester.Indexer.Index(new TransactionEntry.Entity(null, tx, null));
+                tester.Indexer.IndexTransactions(new TransactionEntry.Entity(null, tx, null));
                 tester.Indexer.IndexOrderedBalance(tx);
 
                 satoshiBalance = tester.Client.GetOrderedBalance(satoshi).ToArray();
@@ -1504,12 +1507,12 @@ namespace Stratis.Bitcoin.Features.AzureIndexer.Tests
                 node.ChainBuilder.SubmitBlock();
                 tester.Indexer.IndexBlocks();
                 tester.Indexer.IndexTransactions();
-                var txRepo = new IndexerTransactionRepository(tester.Indexer.Configuration);
+                var txRepo = new IndexerTransactionRepository(tester.Indexer.StorageClient);
                 var indexedTx = txRepo.Get(ccTester.TestedTxId);
                 Assert.NotNull(indexedTx);
                 Assert.Null(txRepo.Get(tester.UnknownTransactionId));
 
-                var ccTxRepo = new IndexerColoredTransactionRepository(tester.Indexer.Configuration);
+                var ccTxRepo = new IndexerColoredTransactionRepository(tester.Indexer.StorageClient);
                 var colored = ccTxRepo.Get(ccTester.TestedTxId);
                 Assert.Null(colored);
 
