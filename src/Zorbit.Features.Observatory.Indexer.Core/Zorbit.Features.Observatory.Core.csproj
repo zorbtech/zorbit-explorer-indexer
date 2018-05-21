@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stratis.Bitcoin" Version="1.0.11-alpha" />
+    <PackageReference Include="Stratis.Bitcoin.Features.BlockStore" Version="1.0.11-alpha" />
+  </ItemGroup>
+
+</Project>
